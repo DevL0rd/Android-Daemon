@@ -1,57 +1,30 @@
 import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import "lib/MirrorState.js" as MirrorState
+import org.kde.plasma.plasmoid
+import org.kde.plasma.core as PlasmaCore
 
 MouseArea {
     id: compact
 
+    readonly property bool vertical: Plasmoid.formFactor === PlasmaCore.Types.Vertical
     property bool wasExpanded: false
-    readonly property color badgeColor: !feed.ready ? Kirigami.Theme.negativeTextColor
-        : root.cameraInUse ? Kirigami.Theme.negativeTextColor
-        : mirror.link !== "" ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor
 
     hoverEnabled: true
     onPressed: wasExpanded = root.expanded
     onClicked: root.expanded = !wasExpanded
 
-    Layout.minimumWidth: Kirigami.Units.iconSizes.medium
-    Layout.minimumHeight: Kirigami.Units.iconSizes.medium
-
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: 1
-        radius: Kirigami.Units.cornerRadius
-        color: Qt.alpha(Kirigami.Theme.textColor, compact.containsMouse || root.expanded ? 0.08 : 0)
-        Behavior on color { ColorAnimation { duration: 150 } }
-    }
+    Layout.minimumWidth: vertical ? 0 : height
+    Layout.maximumWidth: vertical ? Infinity : height
+    Layout.minimumHeight: vertical ? width : 0
+    Layout.maximumHeight: vertical ? width : Infinity
 
     Kirigami.Icon {
-        id: icon
         anchors.centerIn: parent
-        width: Math.min(parent.width, parent.height)
+        width: Kirigami.Units.iconSizes.smallMedium
         height: width
-        source: "smartphone"
+        source: root.trayIcon
+        fallback: "smartphone-symbolic"
         active: compact.containsMouse
-    }
-
-    Rectangle {
-        visible: feed.ready
-        width: Math.round(icon.width * 0.5)
-        height: width
-        radius: width / 2
-        anchors.right: icon.right
-        anchors.bottom: icon.bottom
-        color: Kirigami.Theme.backgroundColor
-        border.width: Math.max(1, Math.round(width * 0.08))
-        border.color: compact.badgeColor
-
-        Kirigami.Icon {
-            anchors.fill: parent
-            anchors.margins: Math.round(parent.width * 0.18)
-            source: root.cameraInUse ? "camera-web" : MirrorState.linkIcon(mirror.link)
-            isMask: true
-            color: compact.badgeColor
-        }
     }
 }

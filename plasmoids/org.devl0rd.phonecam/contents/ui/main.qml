@@ -84,7 +84,8 @@ PlasmoidItem {
         : feed.error ? "error" : "idle"
 
     Plasmoid.title: i18n("Phone Manager")
-    Plasmoid.icon: "smartphone"
+    readonly property string trayIcon: !feed.ready ? "smartphoneattention" : mirror.link !== "" ? "smartphoneconnected" : "smartphonedisconnected"
+    Plasmoid.icon: trayIcon
     toolTipMainText: i18n("Phone Manager")
     toolTipSubText: !feed.ready ? i18n("daemon not running")
                   : feed.activeName ? i18n("%1 · %2", feed.activeName, MirrorState.linkText(mirror.link))
