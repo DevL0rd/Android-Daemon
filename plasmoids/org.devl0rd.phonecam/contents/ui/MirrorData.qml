@@ -5,6 +5,8 @@ import "lib"
 Item {
     id: root
 
+    property bool active: true
+
     property string status: "off"
     property bool running: false
     property bool locked: false
@@ -13,6 +15,7 @@ Item {
     property int phoneH: 19
 
     property string cachePath: ""
+    property string lastText: ""
 
     P5Support.DataSource {
         id: helper
@@ -20,12 +23,16 @@ Item {
         onNewData: function(source, d) { root.cachePath = (d.stdout || "").trim(); disconnectSource(source); root.read() }
     }
 
+    onActiveChanged: if (active) read()
+
     function read() {
-        if (!root.cachePath) return
+        if (!root.cachePath || !root.active) return
         var xhr = new XMLHttpRequest()
         xhr.open("GET", "file://" + root.cachePath)
         xhr.onreadystatechange = function() {
             if (xhr.readyState !== XMLHttpRequest.DONE) return
+            if (xhr.responseText === root.lastText) return
+            root.lastText = xhr.responseText
             if (!xhr.responseText) { root.status = "off"; root.running = false; root.locked = false; root.link = ""; return }
             try {
                 var p = JSON.parse(xhr.responseText)
@@ -39,7 +46,7 @@ Item {
         xhr.send()
     }
 
-    FileWatcher { path: root.cachePath; onChanged: root.read() }
+    FileWatcher { path: root.active ? root.cachePath : ""; onChanged: root.read() }
 
     Component.onCompleted: helper.connectSource("printf %s \"$XDG_RUNTIME_DIR/Linux-Android-Daemon/phonescreen.json\"")
 }

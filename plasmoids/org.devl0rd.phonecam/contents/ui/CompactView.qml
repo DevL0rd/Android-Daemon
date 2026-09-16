@@ -45,7 +45,6 @@ MouseArea {
         color: Kirigami.Theme.backgroundColor
         border.width: Math.max(1, Math.round(width * 0.08))
         border.color: compact.badgeColor
-        Behavior on border.color { ColorAnimation { duration: 280 } }
 
         Kirigami.Icon {
             anchors.fill: parent

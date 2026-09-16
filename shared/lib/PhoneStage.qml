@@ -26,7 +26,6 @@ Rectangle {
             GradientStop { position: 0; color: Qt.alpha(stage.toneColor, 0.10) }
             GradientStop { position: 0.55; color: "transparent" }
         }
-        Behavior on opacity { NumberAnimation { duration: 280 } }
     }
 
     MouseArea {
@@ -53,7 +52,6 @@ Rectangle {
                 color: Qt.alpha(stage.toneColor, 0.14)
                 border.width: 1
                 border.color: Qt.alpha(stage.toneColor, 0.35)
-                Behavior on color { ColorAnimation { duration: 280 } }
             }
             Kirigami.Icon {
                 anchors.centerIn: parent

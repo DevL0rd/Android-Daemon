@@ -17,22 +17,23 @@ Item {
         return Highlight.matchesAny([field.label, field.section, field.hint || "", field.keywords || ""], needle)
     }
 
-    readonly property var actions: [
-        { text: root.displayLocked ? i18n("Unlock phone") : i18n("Lock phone"), icon: root.displayLocked ? "object-unlocked" : "object-locked", keywords: "lock unlock screen pin", run: () => root.toggleLock(), enabled: root.reachable },
-        { text: i18n("Pop out mirror"), icon: "window-new", keywords: "pop out window mirror scrcpy", run: () => root.popOut(), enabled: root.reachable && mirror.status !== "external" },
-        { text: i18n("Volume up"), icon: "audio-volume-high", keywords: "volume louder sound", run: () => root.volUp(), enabled: root.reachable },
-        { text: i18n("Volume down"), icon: "audio-volume-low", keywords: "volume quieter sound", run: () => root.volDown(), enabled: root.reachable },
-        { text: i18n("Back"), icon: "draw-arrow-back", keywords: "back navigate", run: () => root.navKey("back"), enabled: root.reachable },
-        { text: i18n("Home"), icon: "go-home", keywords: "home launcher navigate", run: () => root.navKey("home"), enabled: root.reachable },
-        { text: i18n("Recent apps"), icon: "window-duplicate", keywords: "recents apps switcher overview", run: () => root.navKey("recents"), enabled: root.reachable },
-        { text: i18n("Show phone"), icon: "smartphone", keywords: "phone mirror screen view", run: () => root.openTab(0), enabled: true },
-        { text: i18n("Show webcam"), icon: "camera-web", keywords: "camera webcam preview video", run: () => root.openTab(1), enabled: true },
-        { text: i18n("Show settings"), icon: "configure", keywords: "settings options preferences", run: () => root.openTab(2), enabled: true }
-    ].filter(action => action.enabled && Highlight.matchesAny([action.text, action.keywords], needle))
+    readonly property var allActions: [
+        { text: () => root.displayLocked ? i18n("Unlock phone") : i18n("Lock phone"), icon: () => root.displayLocked ? "object-unlocked" : "object-locked", keywords: "lock unlock screen pin", run: () => root.toggleLock(), enabled: () => root.reachable },
+        { text: () => i18n("Pop out mirror"), icon: () => "window-new", keywords: "pop out window mirror scrcpy", run: () => root.popOut(), enabled: () => root.reachable && mirror.status !== "external" },
+        { text: () => i18n("Volume up"), icon: () => "audio-volume-high", keywords: "volume louder sound", run: () => root.volUp(), enabled: () => root.reachable },
+        { text: () => i18n("Volume down"), icon: () => "audio-volume-low", keywords: "volume quieter sound", run: () => root.volDown(), enabled: () => root.reachable },
+        { text: () => i18n("Back"), icon: () => "draw-arrow-back", keywords: "back navigate", run: () => root.navKey("back"), enabled: () => root.reachable },
+        { text: () => i18n("Home"), icon: () => "go-home", keywords: "home launcher navigate", run: () => root.navKey("home"), enabled: () => root.reachable },
+        { text: () => i18n("Recent apps"), icon: () => "window-duplicate", keywords: "recents apps switcher overview", run: () => root.navKey("recents"), enabled: () => root.reachable },
+        { text: () => i18n("Show phone"), icon: () => "smartphone", keywords: "phone mirror screen view", run: () => root.openTab(0), enabled: () => true },
+        { text: () => i18n("Show webcam"), icon: () => "camera-web", keywords: "camera webcam preview video", run: () => root.openTab(1), enabled: () => true },
+        { text: () => i18n("Show settings"), icon: () => "configure", keywords: "settings options preferences", run: () => root.openTab(2), enabled: () => true }
+    ]
+    readonly property var actions: allActions.filter(action => action.enabled() && Highlight.matchesAny([action.text(), action.keywords], needle))
 
-    readonly property var phones: (feed.devices || []).filter(device => Highlight.matchesAny([device.name, device.serial, device.last_ip, device.usb ? "usb" : device.last_ip ? "wifi wi-fi" : "offline"], needle))
+    readonly property var phones: feed.devices.filter(device => Highlight.matchesAny([device.name, device.serial, device.last_ip, device.usb ? "usb" : device.last_ip ? "wifi wi-fi" : "offline"], needle))
     readonly property var cameraMatches: root.cameraFields.filter(fieldMatches)
-    readonly property var deviceMatches: root.activeDevice ? root.deviceFields.filter(fieldMatches) : []
+    readonly property var deviceMatches: feed.activeSerial !== "" ? root.deviceFields.filter(fieldMatches) : []
     readonly property int count: actions.length + phones.length + cameraMatches.length + deviceMatches.length
 
     function activateFirst() {
@@ -82,13 +83,13 @@ Item {
                         anchors.rightMargin: Kirigami.Units.smallSpacing * 2
                         spacing: Kirigami.Units.largeSpacing
                         Kirigami.Icon {
-                            source: actionRow.modelData.icon
+                            source: actionRow.modelData.icon()
                             Layout.preferredWidth: Kirigami.Units.iconSizes.small
                             Layout.preferredHeight: Kirigami.Units.iconSizes.small
                         }
                         PlasmaComponents.Label {
                             Layout.fillWidth: true
-                            text: Highlight.mark(actionRow.modelData.text, results.needle, Kirigami.Theme.highlightColor)
+                            text: Highlight.mark(actionRow.modelData.text(), results.needle, Kirigami.Theme.highlightColor)
                             textFormat: Text.StyledText
                             elide: Text.ElideRight
                         }

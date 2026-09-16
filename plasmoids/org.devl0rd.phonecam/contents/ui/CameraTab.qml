@@ -183,11 +183,11 @@ PopScroll {
     PopCard {
         title: i18n("Phone")
         icon: "smartphone"
-        visible: (feed.devices || []).length > 1
+        visible: feed.devices.length > 1
         trailing: feed.activeName
 
         Repeater {
-            model: feed.devices || []
+            model: feed.devices
             DeviceRow {
                 required property var modelData
                 Layout.fillWidth: true

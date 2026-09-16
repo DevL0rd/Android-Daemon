@@ -4,6 +4,7 @@ import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.plasmoid
+import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.plasma5support as P5Support
 import "lib"
 import "lib/MirrorState.js" as MirrorState
@@ -14,6 +15,8 @@ PlasmoidItem {
     readonly property string ctlBin: "$HOME/.local/bin/phonescreenctl"
     readonly property string serial: (Plasmoid.configuration.deviceSerial || "").trim()
     readonly property string serialArg: serial !== "" ? " " + serial : ""
+    readonly property bool inPanel: Plasmoid.formFactor === PlasmaCore.Types.Horizontal || Plasmoid.formFactor === PlasmaCore.Types.Vertical
+    readonly property bool dataWanted: inPanel || visible
     readonly property bool mirrorMine: feed.owner === "" || feed.owner === "desktop"
 
     property var pendingLock: null
@@ -43,7 +46,10 @@ PlasmoidItem {
     toolTipMainText: feed.activeName || i18n("Phone Screen")
     toolTipSubText: mirrorView.text
 
-    ScreenData { id: feed }
+    ScreenData {
+        id: feed
+        active: root.dataWanted
+    }
 
     P5Support.DataSource {
         id: runner
@@ -64,7 +70,7 @@ PlasmoidItem {
     }
 
     function claimMirror() {
-        if (!_pinTarget) return
+        if (!_pinTarget || !root.dataWanted) return
         var r = screenRect()
         var a = "claim desktop 1 " + r.x + " " + r.y + " " + r.w + " " + r.h + root.serialArg
         a += " --above " + (Plasmoid.configuration.keepBelow ? 0 : 1)
@@ -72,6 +78,10 @@ PlasmoidItem {
         var extra = (Plasmoid.configuration.extraArgs || "").replace(/'/g, "").trim()
         if (extra !== "") a += " --extra '" + extra + "'"
         ctl(a)
+    }
+    onDataWantedChanged: {
+        if (root.dataWanted) claimMirror()
+        else ctl("release desktop")
     }
     function popOut() { ctl("window" + root.serialArg) }
     function toggleLock() {
@@ -82,7 +92,7 @@ PlasmoidItem {
 
     Timer {
         interval: 1000; repeat: true
-        running: true
+        running: root.dataWanted
         triggeredOnStart: true
         onTriggered: root.claimMirror()
     }
@@ -104,8 +114,8 @@ PlasmoidItem {
                 title: feed.activeName || (feed.ready ? i18n("No phone found") : i18n("Phone Screen"))
                 subtitle: {
                     const parts = [MirrorState.linkText(feed.reachable ? feed.transport : "")]
-                    if (feed.transport === "wifi" && feed.activeDev && feed.activeDev.last_ip)
-                        parts.push(feed.activeDev.last_ip)
+                    if (feed.transport === "wifi")
+                        parts.push(feed.lastIp)
                     parts.push(root.mirrorView.text)
                     return parts.join("  ·  ")
                 }

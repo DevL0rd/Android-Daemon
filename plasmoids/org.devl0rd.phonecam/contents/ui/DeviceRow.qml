@@ -22,11 +22,16 @@ MouseArea {
     Rectangle {
         anchors.fill: parent
         radius: Kirigami.Units.cornerRadius * 1.5
-        color: row.active ? Qt.alpha(Kirigami.Theme.highlightColor, 0.16)
-             : row.containsMouse ? Qt.alpha(Kirigami.Theme.textColor, 0.06) : "transparent"
+        color: row.active ? Qt.alpha(Kirigami.Theme.highlightColor, 0.16) : "transparent"
         border.width: row.active ? 1 : 0
         border.color: Qt.alpha(Kirigami.Theme.highlightColor, 0.45)
-        Behavior on color { ColorAnimation { duration: 150 } }
+    }
+    Rectangle {
+        anchors.fill: parent
+        radius: Kirigami.Units.cornerRadius * 1.5
+        color: Qt.alpha(Kirigami.Theme.textColor, 0.06)
+        opacity: row.containsMouse && !row.active ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 150 } }
     }
 
     RowLayout {

@@ -33,7 +33,6 @@ RowLayout {
             color: header.statusColor
             border.width: 2
             border.color: Kirigami.Theme.backgroundColor
-            Behavior on color { ColorAnimation { duration: 280 } }
             HoverHandler { id: statusHover }
             QQC2.ToolTip.visible: statusHover.hovered && header.statusText !== ""
             QQC2.ToolTip.text: header.statusText

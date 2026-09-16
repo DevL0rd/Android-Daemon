@@ -31,7 +31,7 @@ Item {
         PlasmaComponents.Label { id: measureSubtitle; text: "Ag"; font: Kirigami.Theme.smallFont }
         PlasmaComponents.ToolButton { id: measureButton; icon.name: "window-new"; display: PlasmaComponents.AbstractButton.IconOnly }
         PlasmaExtras.SearchField { id: measureSearch }
-        PopTabs { id: measureTabs; model: shell.tabs }
+        PopTabs { id: measureTabs; model: root.tabModel }
     }
 
     implicitWidth: root.inPanel ? wantW : Kirigami.Units.gridUnit * 20
@@ -95,11 +95,7 @@ Item {
         statusColor: root.statusColor
         statusText: root.mirrorView.text
         searchPlaceholder: i18n("Search settings, phones, actions…")
-        tabs: [
-            { key: "phone", label: i18n("Phone"), icon: "smartphone" },
-            { key: "camera", label: i18n("Webcam"), icon: "camera-web", badge: root.cameraState === "live" ? i18n("LIVE") : root.cameraState === "inuse" ? i18n("IN USE") : "" },
-            { key: "settings", label: i18n("Settings"), icon: "configure" }
-        ]
+        tabs: root.tabModel
         currentTab: root.currentTab
         onTabActivated: index => root.currentTab = index
         onCloseRequested: if (root.inPanel) root.expanded = false

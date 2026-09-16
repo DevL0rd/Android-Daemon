@@ -19,7 +19,8 @@ PlasmoidItem {
     readonly property int screenH: Screen.height > 0 ? Screen.height : 1080
 
     readonly property bool inPanel: Plasmoid.formFactor === PlasmaCore.Types.Horizontal || Plasmoid.formFactor === PlasmaCore.Types.Vertical
-    readonly property bool shown: inPanel ? expanded : true
+    readonly property bool dataWanted: inPanel || visible
+    readonly property bool shown: inPanel ? expanded : visible
 
     readonly property string resKey: (mirror.phoneW > 0 && mirror.phoneH > 0)
         ? (mirror.phoneW + "x" + mirror.phoneH) : ""
@@ -93,6 +94,8 @@ PlasmoidItem {
 
     PhoneCamData {
         id: feed
+        active: root.dataWanted
+        detailed: root.shown
         onUpdated: {
             if (root.previewPaused && feed.pinGen !== root.pausedPinGen) {
                 root.previewPaused = false
@@ -134,7 +137,7 @@ PlasmoidItem {
     property string previewDir: ""
     property int previewTick: 0
     readonly property bool previewShowing: root.shown && root.currentTab === 1 && !root.searching && !root.previewPaused
-    readonly property bool appUsing: feed.consumers && feed.consumers.length > 0
+    readonly property bool appUsing: feed.consumerCount > 0
     readonly property bool cameraInUse: feed.streaming || appUsing
 
     P5Support.DataSource {
@@ -182,7 +185,10 @@ PlasmoidItem {
     property var pendingLock: null
     readonly property bool displayLocked: pendingLock !== null ? pendingLock : mirror.locked
 
-    MirrorData { id: mirror }
+    MirrorData {
+        id: mirror
+        active: root.dataWanted
+    }
 
     P5Support.DataSource {
         id: psRunner; engine: "executable"
@@ -236,12 +242,17 @@ PlasmoidItem {
     }
     onSearchingChanged: claimMirror()
     Timer {
-        interval: 500; repeat: true; running: root.mirrorWanted
+        interval: root.inPanel ? 500 : 1000; repeat: true; running: root.mirrorWanted
         triggeredOnStart: true
         onTriggered: root.claimMirror()
     }
     hideOnWindowDeactivate: false
 
+    readonly property var tabModel: [
+        { key: "phone", label: i18n("Phone"), icon: "smartphone" },
+        { key: "camera", label: i18n("Webcam"), icon: "camera-web" },
+        { key: "settings", label: i18n("Settings"), icon: "configure" }
+    ]
     readonly property var lensOptions: [
         { label: i18n("Back"), value: "back" }, { label: i18n("Front"), value: "front" },
         { label: i18n("External"), value: "external" }
