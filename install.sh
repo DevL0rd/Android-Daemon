@@ -151,7 +151,9 @@ if command -v kpackagetool6 >/dev/null 2>&1; then
     echo "Installing the Plasma widgets..."
     for d in "$REPO_DIR"/plasmoids/org.devl0rd.phonecam "$REPO_DIR"/plasmoids/org.devl0rd.phonescreen; do
         id=$(basename "$d")
-        cp "$REPO_DIR/shared/common/FileWatcher.qml" "$d/contents/ui/"  # shared (submodule) component
+        rm -f "$d/contents/ui/FileWatcher.qml"
+        mkdir -p "$d/contents/ui/lib"
+        cp "$REPO_DIR/shared/common/"*.qml "$REPO_DIR/shared/common/"*.js "$REPO_DIR/shared/lib/"* "$d/contents/ui/lib/"
         if kpackagetool6 -t Plasma/Applet -u "$d" >/dev/null 2>&1; then
             echo "  upgraded $id"
         else

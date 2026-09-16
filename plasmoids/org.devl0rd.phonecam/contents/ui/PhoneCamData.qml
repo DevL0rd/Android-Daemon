@@ -1,14 +1,6 @@
-/*
- * Phone Camera :: shared data source.
- *
- * Reads the status snapshot the camera daemon keeps in tmpfs, fully in-process
- * via XMLHttpRequest (file://) — same approach as Linux-Router-Monitor, so it
- * needs QML_XHR_ALLOW_FILE_READ=1 in the Plasma session (set by install.sh).
- * No fallback: if the read can't happen (service down / flag unset) the widget
- * simply shows "no daemon".
- */
 import QtQuick
 import org.kde.plasma.plasma5support as P5Support
+import "lib"
 
 Item {
     id: root

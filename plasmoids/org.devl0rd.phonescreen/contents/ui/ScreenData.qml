@@ -1,16 +1,6 @@
-/*
- * Phone Screen :: status reader.
- *
- * Reads two tmpfs snapshots in-process via XMLHttpRequest (file://), exactly like
- * the sibling widgets (needs QML_XHR_ALLOW_FILE_READ=1, set by install.sh):
- *   • phonecam.json     — written by the daemon: device list + connection state
- *   • phonescreen.json  — written by the daemon: pinned-mirror status/owner/lock
- *
- * No process is spawned per poll; control actions (claim/lock/unlock) go through
- * phonescreenctl separately.
- */
 import QtQuick
 import org.kde.plasma.plasma5support as P5Support
+import "lib"
 
 Item {
     id: root
@@ -20,22 +10,17 @@ Item {
     property string activeSerial: ""
     property string activeName: ""
     property string error: ""
-    // pinned-mirror state, written by the daemon:
-    //   status: "connected" | "connecting" | "offline" | "external" | "off"
     property string status: "off"
-    property bool running: false      // our pinned scrcpy is actually up
-    property bool locked: false       // the phone is locked (mirror hidden while so)
-    property string owner: ""         // which claim currently has the mirror (desktop/popup/…)
+    property bool running: false
+    property bool locked: false
+    property string owner: ""
     signal updated()
 
     property string dir: ""
-
-    // derive the active device's reachability/transport from the device list
     readonly property var activeDev: {
         var devs = devices || []
         for (var i = 0; i < devs.length; i++)
             if (devs[i].serial === activeSerial) return devs[i]
-        // no explicit active serial yet: fall back to the first (daemon's auto pick)
         return devs.length ? devs[0] : null
     }
     readonly property bool onUsb: activeDev ? activeDev.usb === true : false
@@ -88,9 +73,6 @@ Item {
             } catch (e) {}
         })
     }
-
-    // Event-driven via FileWatcher (no polling): re-read whenever the daemon rewrites
-    // either snapshot it depends on.
     FileWatcher { path: root.dir ? root.dir + "/phonecam.json" : ""; onChanged: root.read() }
     FileWatcher { path: root.dir ? root.dir + "/phonescreen.json" : ""; onChanged: root.read() }
 
