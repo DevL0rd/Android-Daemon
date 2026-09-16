@@ -201,7 +201,7 @@ PlasmoidItem {
     function claimMirror() {
         if (!_phoneTarget || !root.mirrorWanted) return
         var p = _phoneTarget.mapToGlobal(0, 0)
-        var a = "claim " + root.claimName + " " + (root.inPanel ? 2 : 1) + " " + Math.round(p.x) + " " + Math.round(p.y)
+        var a = "claim " + root.claimName + " " + (root.inPanel ? 2 : 0) + " " + Math.round(p.x) + " " + Math.round(p.y)
               + " " + Math.round(_phoneTarget.width) + " " + Math.round(_phoneTarget.height)
         if (phoneSerial() !== "") a += " " + phoneSerial()
         var show = root.phoneTab && !root.resizing && !root.searching
