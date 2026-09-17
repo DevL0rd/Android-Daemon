@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="330" viewBox="0 0 1280 330">
+<defs>
+<linearGradient id="bgd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#182544"/></linearGradient>
+<clipPath id="clipd"><rect width="1280" height="330" rx="20"/></clipPath>
+<style>
+.title{font:800 84px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif;letter-spacing:-2px}
+.sub{font:500 26px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif}
+.pill{font:600 17px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif}
+.h{font:700 22px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif}
+.b{font:500 16px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif}
+.s{font:600 13px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif;letter-spacing:.6px}
+.m{font:600 14px 'JetBrains Mono','Fira Code',Menlo,Consolas,monospace}
+
+.on{animation:on 12s ease-in-out infinite}.off{animation:off 12s ease-in-out infinite}
+@keyframes on{0%,8%{opacity:0}14%,62%{opacity:1}70%,100%{opacity:0}}
+@keyframes off{0%,8%{opacity:1}14%,62%{opacity:0}70%,100%{opacity:1}}
+.appon{animation:appon 12s ease-in-out infinite}
+@keyframes appon{0%,4%{opacity:.35}8%,62%{opacity:1}66%,100%{opacity:.35}}
+
+</style>
+</defs>
+<g clip-path="url(#clipd)"><rect width="1280" height="330" fill="url(#bgd)"/>
+<text x="48" y="56" class="s" fill="#6f7b99">THE WEBCAM WAKES UP ONLY WHEN IT’S NEEDED</text>
+<rect x="48" y="92" width="270" height="150" rx="16" fill="#1b2031" stroke="#2f3852" stroke-width="1.5"/>
+<text x="70" y="208" class="h" fill="#f4f7ff">Your phone</text>
+<text x="70" y="230" class="b" fill="#aab6d3">camera sleeps until asked</text>
+<rect x="378" y="92" width="270" height="150" rx="16" fill="#1b2031" stroke="#2f3852" stroke-width="1.5"/>
+<text x="400" y="208" class="h" fill="#f4f7ff">Webcam daemon</text>
+<text x="400" y="230" class="b" fill="#aab6d3">watches who opens the camera</text>
+<rect x="708" y="92" width="240" height="150" rx="16" fill="#1b2031" stroke="#2f3852" stroke-width="1.5"/>
+<text x="730" y="208" class="h" fill="#f4f7ff">Phone Camera</text>
+<text x="730" y="230" class="b" fill="#aab6d3">/dev/video9</text>
+<rect x="1008" y="92" width="224" height="150" rx="16" fill="#1b2031" stroke="#2f3852" stroke-width="1.5"/>
+<text x="1030" y="208" class="h" fill="#f4f7ff">Any app</text>
+<text x="1030" y="230" class="b" fill="#aab6d3">OBS, browser, calls</text>
+<g transform="translate(92,146) scale(1.2)"><rect x="-13" y="-22" width="26" height="44" rx="5" fill="none" stroke="#f4f7ff" stroke-width="2.6"/><rect x="-5" y="15" width="10" height="2.6" rx="1.3" fill="#f4f7ff"/></g>
+<g class="on"><circle cx="92" cy="140" r="7" fill="#ff6b6b"/><text x="118" y="150" class="pill" fill="#ff6b6b">camera on</text></g>
+<g class="off"><circle cx="92" cy="140" r="6" fill="#6f7b99"/><text x="118" y="150" class="pill" fill="#6f7b99">asleep</text></g>
+<g transform="translate(400,122)"><rect width="120" height="44" rx="10" fill="#262e45"/><text x="60" y="28" text-anchor="middle" class="m" fill="#3daee9">scrcpy</text></g>
+<g class="on"><text x="534" y="150" class="pill" fill="#3ddc84">streaming</text></g><g class="off"><text x="534" y="150" class="pill" fill="#6f7b99">idle</text></g>
+<g transform="translate(730,118)"><rect width="84" height="52" rx="10" fill="#0a0a0a"/><g class="on"><rect x="4" y="4" width="76" height="44" rx="7" fill="url(#bgd)"/><path d="M8 44 L28 24 L42 36 L54 26 L76 44 Z" fill="#3ddc84" opacity=".7"/><circle cx="62" cy="15" r="5" fill="#e0af68"/></g></g>
+<g class="appon"><g transform="translate(1030,118)"><rect width="176" height="52" rx="12" fill="#262e45"/><circle cx="26" cy="26" r="9" fill="#ff6b6b"/><text x="46" y="32" class="pill" fill="#f4f7ff">Recording</text></g></g>
+<g class="on"><path d="M318 146 L378 146" fill="none" stroke="#2f3852" stroke-width="3.2" stroke-linecap="round"/>
+<circle r="4" fill="#3ddc84"><animateMotion dur="1s" begin="-0.00s" repeatCount="indefinite" path="M318 146 L378 146"/></circle>
+<circle r="4" fill="#3ddc84"><animateMotion dur="1s" begin="-0.50s" repeatCount="indefinite" path="M318 146 L378 146"/></circle><path d="M648 146 L708 146" fill="none" stroke="#2f3852" stroke-width="3.2" stroke-linecap="round"/>
+<circle r="4" fill="#3ddc84"><animateMotion dur="1s" begin="-0.00s" repeatCount="indefinite" path="M648 146 L708 146"/></circle>
+<circle r="4" fill="#3ddc84"><animateMotion dur="1s" begin="-0.50s" repeatCount="indefinite" path="M648 146 L708 146"/></circle><path d="M948 146 L1008 146" fill="none" stroke="#2f3852" stroke-width="3.2" stroke-linecap="round"/>
+<circle r="4" fill="#3ddc84"><animateMotion dur="1s" begin="-0.00s" repeatCount="indefinite" path="M948 146 L1008 146"/></circle>
+<circle r="4" fill="#3ddc84"><animateMotion dur="1s" begin="-0.50s" repeatCount="indefinite" path="M948 146 L1008 146"/></circle></g>
+<text x="48" y="292" class="b" fill="#aab6d3">Open the camera in any app and the phone connects in a second or two. Close it and the phone is left alone again, so it isn’t kept awake for nothing.</text>
+</g></svg>

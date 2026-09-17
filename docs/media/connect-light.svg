@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="430" viewBox="0 0 1280 430">
+<defs>
+<linearGradient id="bgl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3f7fd"/><stop offset="1" stop-color="#dde8f7"/></linearGradient>
+<clipPath id="clipl"><rect width="1280" height="430" rx="20"/></clipPath>
+<style>
+.title{font:800 84px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif;letter-spacing:-2px}
+.sub{font:500 26px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif}
+.pill{font:600 17px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif}
+.h{font:700 22px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif}
+.b{font:500 16px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif}
+.s{font:600 13px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif;letter-spacing:.6px}
+.m{font:600 14px 'JetBrains Mono','Fira Code',Menlo,Consolas,monospace}
+
+.st{opacity:.42;animation:st 16s ease-in-out infinite}
+.st1{animation-delay:0s}.st2{animation-delay:-12.0s}.st3{animation-delay:-8.0s}.st4{animation-delay:-4.0s}
+@keyframes st{0%,2%{opacity:.42}5%,22%{opacity:1}25%,100%{opacity:.42}}
+.ring{opacity:0;animation:ring 16s ease-in-out infinite}
+.ring1{animation-delay:0s}.ring2{animation-delay:-12.0s}.ring3{animation-delay:-8.0s}.ring4{animation-delay:-4.0s}
+@keyframes ring{0%,2%{opacity:0}5%,22%{opacity:1}25%,100%{opacity:0}}
+.lu{animation:lu 16s steps(1) infinite}.lw{animation:lw 16s steps(1) infinite}
+@keyframes lu{0%{opacity:1}50%{opacity:0}75%{opacity:1}}
+@keyframes lw{0%{opacity:0}50%{opacity:1}75%{opacity:0}}
+
+</style>
+</defs>
+<g clip-path="url(#clipl)"><rect width="1280" height="430" fill="url(#bgl)"/>
+<text x="48" y="56" class="s" fill="#8391ad">PLUG IN ONCE, THEN GO WIRELESS</text>
+<g class="st st1">
+<rect x="48" y="84" width="272" height="206" rx="16" fill="#ffffff" stroke="#cfd9ea" stroke-width="1.5"/>
+<circle cx="82" cy="120" r="16" fill="#1d99f3" opacity=".16"/><text x="82" y="126" text-anchor="middle" class="pill" fill="#1d99f3">1</text>
+<text x="108" y="127" class="h" fill="#10172a">Plug in over USB</text>
+<text x="70" y="234" class="b" fill="#4a5775">The daemon spots the phone,</text>
+<text x="70" y="255" class="b" fill="#4a5775">adds it to your config and</text>
+<text x="70" y="276" class="b" fill="#4a5775">saves its Wi-Fi address</text>
+<g transform="translate(126.0,180) scale(1.0)"><rect x="-13" y="-22" width="26" height="44" rx="5" fill="none" stroke="#10172a" stroke-width="2.6"/><rect x="-5" y="15" width="10" height="2.6" rx="1.3" fill="#10172a"/></g>
+<path d="M140.0 180 H214.0" stroke="#1d99f3" stroke-width="3" stroke-dasharray="5 7"><animate attributeName="stroke-dashoffset" from="24" to="0" dur=".8s" repeatCount="indefinite"/></path>
+<g transform="translate(177.0,154)" fill="none" stroke="#1d99f3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M0 16 V-14 M-5 -9 L0 -16 L5 -9 M0 6 L-9 -2 V-7 M0 0 L8 -6 V-10"/><circle cx="0" cy="16" r="3" fill="#1d99f3"/><circle cx="-9" cy="-9" r="2.4" fill="#1d99f3"/><rect x="6" y="-13" width="4.5" height="4.5" fill="#1d99f3"/></g>
+<g transform="translate(242.0,180) scale(1.0)"><rect x="-24" y="-18" width="48" height="31" rx="4" fill="none" stroke="#10172a" stroke-width="2.6"/><path d="M-8 22 H8 M0 13 V22" stroke="#10172a" stroke-width="2.6" stroke-linecap="round"/></g>
+</g>
+<rect class="ring ring1" x="45" y="81" width="278" height="212" rx="18" fill="none" stroke="#1d99f3" stroke-width="3"/>
+<path d="M324 187 l22 0 m-7 -6 l7 6 l-7 6" fill="none" stroke="#8391ad" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<g class="st st2">
+<rect x="350" y="84" width="272" height="206" rx="16" fill="#ffffff" stroke="#cfd9ea" stroke-width="1.5"/>
+<circle cx="384" cy="120" r="16" fill="#1d99f3" opacity=".16"/><text x="384" y="126" text-anchor="middle" class="pill" fill="#1d99f3">2</text>
+<text x="410" y="127" class="h" fill="#10172a">Wireless ADB armed</text>
+<text x="372" y="234" class="b" fill="#4a5775">adb tcpip 5555 runs once,</text>
+<text x="372" y="255" class="b" fill="#4a5775">only if it isn't on already,</text>
+<text x="372" y="276" class="b" fill="#4a5775">and stays on until a reboot</text>
+<g transform="translate(406.0,180) scale(1.0)"><rect x="-13" y="-22" width="26" height="44" rx="5" fill="none" stroke="#10172a" stroke-width="2.6"/><rect x="-5" y="15" width="10" height="2.6" rx="1.3" fill="#10172a"/></g>
+<rect x="434.0" y="162" width="136" height="36" rx="10" fill="#e8eef7"/><text x="502.0" y="185" text-anchor="middle" class="m" fill="#16a34a">:5555 ✓</text>
+<text x="502.0" y="154" text-anchor="middle" class="s" fill="#8391ad">192.168.1.42</text>
+</g>
+<rect class="ring ring2" x="347" y="81" width="278" height="212" rx="18" fill="none" stroke="#1d99f3" stroke-width="3"/>
+<path d="M626 187 l22 0 m-7 -6 l7 6 l-7 6" fill="none" stroke="#8391ad" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<g class="st st3">
+<rect x="652" y="84" width="272" height="206" rx="16" fill="#ffffff" stroke="#cfd9ea" stroke-width="1.5"/>
+<circle cx="686" cy="120" r="16" fill="#1d99f3" opacity=".16"/><text x="686" y="126" text-anchor="middle" class="pill" fill="#1d99f3">3</text>
+<text x="712" y="127" class="h" fill="#10172a">Unplug any time</text>
+<text x="674" y="234" class="b" fill="#4a5775">The mirror and webcam follow</text>
+<text x="674" y="255" class="b" fill="#4a5775">the phone onto Wi-Fi without</text>
+<text x="674" y="276" class="b" fill="#4a5775">you touching anything</text>
+<g transform="translate(730.0,180) scale(1.0)"><rect x="-13" y="-22" width="26" height="44" rx="5" fill="none" stroke="#10172a" stroke-width="2.6"/><rect x="-5" y="15" width="10" height="2.6" rx="1.3" fill="#10172a"/></g>
+<g transform="translate(788.0,172)" fill="none" stroke="#16a34a" stroke-width="2.8" stroke-linecap="round"><path d="M-16 -4 A23 23 0 0 1 16 -4"/><path d="M-10 3 A14 14 0 0 1 10 3"/><circle cx="0" cy="11" r="2.6" fill="#16a34a"/></g>
+<path d="M748.0 198 H818.0" stroke="#16a34a" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"><animate attributeName="stroke-dashoffset" from="20" to="0" dur=".8s" repeatCount="indefinite"/></path>
+<g transform="translate(846.0,180) scale(1.0)"><rect x="-24" y="-18" width="48" height="31" rx="4" fill="none" stroke="#10172a" stroke-width="2.6"/><path d="M-8 22 H8 M0 13 V22" stroke="#10172a" stroke-width="2.6" stroke-linecap="round"/></g>
+</g>
+<rect class="ring ring3" x="649" y="81" width="278" height="212" rx="18" fill="none" stroke="#1d99f3" stroke-width="3"/>
+<path d="M928 187 l22 0 m-7 -6 l7 6 l-7 6" fill="none" stroke="#8391ad" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<g class="st st4">
+<rect x="954" y="84" width="272" height="206" rx="16" fill="#ffffff" stroke="#cfd9ea" stroke-width="1.5"/>
+<circle cx="988" cy="120" r="16" fill="#1d99f3" opacity=".16"/><text x="988" y="126" text-anchor="middle" class="pill" fill="#1d99f3">4</text>
+<text x="1014" y="127" class="h" fill="#10172a">Plug back in</text>
+<text x="976" y="234" class="b" fill="#4a5775">Everything hops back onto</text>
+<text x="976" y="255" class="b" fill="#4a5775">the faster USB cable</text>
+<text x="976" y="276" class="b" fill="#4a5775">on its own</text>
+<g transform="translate(1032.0,180) scale(1.0)"><rect x="-13" y="-22" width="26" height="44" rx="5" fill="none" stroke="#10172a" stroke-width="2.6"/><rect x="-5" y="15" width="10" height="2.6" rx="1.3" fill="#10172a"/></g>
+<path d="M1046.0 180 H1120.0" stroke="#1d99f3" stroke-width="3"/>
+<g transform="translate(1083.0,154)" fill="none" stroke="#1d99f3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M0 16 V-14 M-5 -9 L0 -16 L5 -9 M0 6 L-9 -2 V-7 M0 0 L8 -6 V-10"/><circle cx="0" cy="16" r="3" fill="#1d99f3"/><circle cx="-9" cy="-9" r="2.4" fill="#1d99f3"/><rect x="6" y="-13" width="4.5" height="4.5" fill="#1d99f3"/></g>
+<g transform="translate(1148.0,180) scale(1.0)"><rect x="-24" y="-18" width="48" height="31" rx="4" fill="none" stroke="#10172a" stroke-width="2.6"/><path d="M-8 22 H8 M0 13 V22" stroke="#10172a" stroke-width="2.6" stroke-linecap="round"/></g>
+</g>
+<rect class="ring ring4" x="951" y="81" width="278" height="212" rx="18" fill="none" stroke="#1d99f3" stroke-width="3"/>
+<rect x="48" y="330" width="1184" height="70" rx="16" fill="#ffffff" stroke="#cfd9ea" stroke-width="1.5"/>
+<text x="76" y="372" class="h" fill="#10172a">Your widgets</text>
+<text x="226" y="372" class="b" fill="#4a5775">show the link live, and the one mirror keeps running while it switches</text>
+<g class="lu" transform="translate(1134,350)"><rect width="70" height="30" rx="15" fill="#1d99f3" opacity=".16"/><circle cx="16" cy="15" r="4.5" fill="#1d99f3"/><text x="45.0" y="20" text-anchor="middle" class="pill" fill="#1d99f3">USB</text></g>
+<g class="lw" transform="translate(1008,350)"><rect width="196" height="30" rx="15" fill="#16a34a" opacity=".16"/><circle cx="16" cy="15" r="4.5" fill="#16a34a"/><text x="108.0" y="20" text-anchor="middle" class="pill" fill="#16a34a">Wi-Fi · 192.168.1.42</text></g>
+</g></svg>

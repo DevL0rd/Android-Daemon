@@ -1,258 +1,397 @@
-# Android-Daemon
+<a id="top"></a>
 
-A small suite that makes an Android phone a first-class part of a Linux (KDE
-Plasma) desktop:
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/media/banner-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/media/banner-light.svg">
+    <img alt="Android-Daemon — your Android phone, part of your Plasma desktop" src="docs/media/banner-dark.svg" width="100%">
+  </picture>
+</p>
 
-* **Screen mirror** — plug in over USB and the phone is mirrored with `scrcpy`,
-  with wireless ADB armed so it keeps working over Wi-Fi when you unplug. The
-  mirror **follows the connection** (USB ⇄ Wi-Fi) on its own.
-* **Phone Screen widget** (desktop) — a live, always-connected mirror pinned
-  right on your desktop. Lock/unlock, volume, Back/Home/Recents, pop-out.
-* **Phone Manager widget** (system tray) — the same live phone in a drop-down,
-  plus **Camera** and **Settings** tabs, and a **pin** to keep it open on top.
-* **Phone Camera** — use the phone's camera as a normal Linux webcam
-  (v4l2loopback), controlled from the tray, connected only on demand.
-* **USB-tethering failover** — if the PC loses its real uplink, the plugged-in
-  phone is switched into USB tethering; switched back when a real uplink returns.
+<p align="center">
+  <img alt="KDE Plasma 6" src="https://img.shields.io/badge/KDE_Plasma-6-1d99f3?style=for-the-badge&logo=kde&logoColor=white">
+  <img alt="Android" src="https://img.shields.io/badge/Android-USB_+_Wi--Fi-3ddc84?style=for-the-badge&logo=android&logoColor=white">
+  <img alt="scrcpy" src="https://img.shields.io/badge/powered_by-scrcpy-8a5cd6?style=for-the-badge">
+  <a href="https://github.com/DevL0rd/Android-Daemon/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/DevL0rd/Android-Daemon?style=for-the-badge&logo=github&color=3daee9"></a>
+</p>
 
-It's mostly for myself, but in case my friends use it, here are the instructions.
+<h3 align="center">Your phone, right on your desktop.</h3>
+
+<p align="center">
+  Android-Daemon pins a live, touchable mirror of your Android phone to your Plasma desktop and tray.<br>
+  Plug it in once and it follows you onto Wi-Fi, turns into a webcam when an app asks, and keeps you online when your network drops.
+</p>
+
+<p align="center">
+  <a href="#get-started"><b>Get started</b></a> ·
+  <a href="#see-it-work"><b>See it work</b></a> ·
+  <a href="#webcam"><b>Webcam</b></a> ·
+  <a href="#settings"><b>Settings</b></a> ·
+  <a href="#configuration"><b>Configuration</b></a> ·
+  <a href="#faq"><b>FAQ</b></a>
+</p>
+
+<p align="center">
+  <img alt="The Phone Screen widget mirroring a phone, then handing the mirror to the Phone Manager in the tray" src="docs/media/hero.gif" width="80%">
+</p>
 
 ---
 
-## Requirements
+<a id="get-started"></a>
 
-`install.sh` installs the packages it can from the official repos (Arch/CachyOS).
+## 🚀 Get started
 
-* `adb` (`android-tools`), `scrcpy` (3.0+; 4.0 here), `ffmpeg` — installed by
-  `install.sh`.
-* `v4l2loopback-dkms` + `v4l2loopback-utils` (the **Phone Camera**) + the kernel
-  headers for your running kernel — installed by `install.sh`.
-* KDE **Plasma 6** with `kpackagetool6` (the widgets).
-* `ydotool` (repo) + `kdotool` (AUR) — only for the "turn the phone screen off
-  again after an in-widget unlock" nicety; everything else works without them.
-* USB debugging enabled on the phone, with this computer authorised.
-* An **Android 12+** phone for the camera feature (scrcpy camera mirroring).
-
-`install.sh` also sets `QML_XHR_ALLOW_FILE_READ=1` (so the widgets can read the
-daemon's status snapshots) and makes the daemon inherit the graphical session env
-(needed for the mirror's KWin/fullscreen/screen-off bits).
-
-## Installation
-
-Clone **with submodules** — the shared QML components live in the
-[Plasma-Shared](https://github.com/DevL0rd/Plasma-Shared) submodule:
-
-```bash
+```sh
 git clone --recurse-submodules https://github.com/DevL0rd/Android-Daemon.git
-# already cloned without it?  git submodule update --init --recursive
+cd Android-Daemon
 ./install.sh
 ```
 
-This generates a git-ignored `config.json` from `config.example.json` (it holds
-your device list and lock PIN), installs the two systemd **user** services and
-the two Plasma widgets. If you were just added to the `input` group (for
-`ydotool`), log out/in once.
+That's it. The installer grabs `adb`, `scrcpy`, `ffmpeg` and the virtual webcam driver, starts the background services and adds two Plasma widgets: **Phone Screen** for your desktop and **Phone Manager** for your system tray.
 
-## Uninstallation
+> [!TIP]
+> Turn on **USB debugging** on your phone, plug it in and allow this computer when the phone asks. That one plug is all it needs: from then on the phone is found over USB or Wi-Fi on its own.
 
-```bash
-./uninstall.sh
-```
+<table>
+  <tr>
+    <td>🔄 <b>Update</b></td>
+    <td>On Arch-based systems Android-Daemon updates itself with every system update and lets you know when it has. You can also run <code>git pull && ./install.sh</code> any time; it's safe to repeat and keeps your settings.</td>
+  </tr>
+  <tr>
+    <td>📦 <b>From a package</b></td>
+    <td>Package builds run <code>./install.sh --aur</code>, so your package manager handles updates instead.</td>
+  </tr>
+  <tr>
+    <td>🧹 <b>Remove</b></td>
+    <td>Run <code>./uninstall.sh</code>. The services, widgets and webcam device go away; general tools like <code>adb</code> and <code>scrcpy</code> stay installed.</td>
+  </tr>
+  <tr>
+    <td>🖥️ <b>Needs</b></td>
+    <td>KDE Plasma 6 on an Arch-based system, and an Android phone with USB debugging. The webcam needs Android 12 or newer.</td>
+  </tr>
+</table>
 
-Stops/removes the services, widgets, helper scripts, the v4l2loopback device and
-the KWin rule. It deliberately leaves the general-purpose packages
-(`adb`/`scrcpy`/`ffmpeg`/`v4l2loopback`/`ydotool`/`kdotool`) installed.
+<a id="wireless"></a>
 
----
+### 🔌 Plug in once, then go wireless
 
-## How it all fits together
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/media/connect-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/media/connect-light.svg">
+    <img alt="Plug in over USB, wireless ADB is armed, unplug and the mirror moves to Wi-Fi, plug back in and it returns to USB" src="docs/media/connect-dark.svg" width="100%">
+  </picture>
+</p>
 
-Two systemd **user** services do the work; the widgets are thin clients that
-read tmpfs status snapshots and write small request files.
+The first time a phone is plugged in it's added to your settings, its Wi-Fi address is saved and wireless debugging is switched on. Walk away with it and the mirror and webcam carry on over Wi-Fi; plug the cable back in and they hop onto the faster USB link. Wireless debugging stays on until the phone restarts.
 
-```
- daemon.py  (linux-android-daemon.service)
-   ├─ watches adb for USB plug/unplug, arms wireless ADB, auto-mirror on plug
-   ├─ USB-tethering failover, KDE Connect click-to-open
-   └─ owns the SHARED pinned mirror (core/phonescreen.py: PinnedMirror)
-
- camera_daemon.py  (linux-phonecam.service)
-   └─ the on-demand phone-as-webcam feed (v4l2loopback)
-
- widgets (Plasma 6)
-   ├─ org.devl0rd.phonescreen  — desktop "Phone Screen"
-   └─ org.devl0rd.phonecam     — tray "Phone Manager" (Phone/Camera/Settings)
-```
-
-### The shared pinned mirror
-
-There is **one** pinned `scrcpy` mirror, owned entirely by the daemon. Widgets
-don't manage `scrcpy` — they write a **claim** (a priority + the rectangle they
-want the mirror in) and heartbeat it while they want the phone on screen. The
-daemon points the single mirror at the highest-priority live claim and **moves
-its window without relaunching `scrcpy`**:
-
-* The desktop widget claims at priority 1; the tray popup claims at priority 2.
-* Open the popup → it wins → the mirror **moves** to the popup. Close it → the
-  mirror **falls back** to the desktop widget's claim (it is never relaunched on
-  a hand-off).
-* When **no** claim is left, the daemon locks the phone and kills `scrcpy` after
-  a short grace period.
-
-The daemon also follows the phone across transports for the pinned mirror: when
-the USB-bound `scrcpy` dies on unplug it relaunches over Wi-Fi (using the LAN IP
-captured while plugged), and plugging the cable back in nudges it onto USB.
-
-Helper CLIs (symlinked into `~/.local/bin`):
-
-* `phonecamctl` — drives the camera daemon (settings, preview, device select).
-* `phonescreenctl` — the thin mirror client: `claim/release`, `lock/unlock`,
-  `volume`, `nav`, `window` (pop-out), `state`.
+<p align="right"><a href="#top">back to top ⬆</a></p>
 
 ---
 
-## Phone Screen widget (desktop)
+<a id="see-it-work"></a>
 
-Add it from **right-click desktop → Add Widgets → "Phone Screen"**. It pins the
-real, interactive `scrcpy` mirror over itself and keeps it connected.
+## 🎬 See it work
 
-* **Visible toggle** (top-right, default on) — keep the mirror pinned and always
-  reconnecting; off disconnects.
-* **Status badge** — USB / Wi-Fi / offline.
-* **Volume**, a **lock/unlock toggle** (reflects the *actual* phone lock state —
-  it also tracks the phone locking itself from a timeout), and a **pop-out**
-  button (a movable `scrcpy` window).
-* **Back / Home / Recents** along the bottom.
-* It **pauses** if a fullscreen app (e.g. a game) is focused, or if `scrcpy` is
-  opened elsewhere, and resumes afterwards.
-* When the phone is **locked** the mirror is hidden (not killed) and the panel
-  says so — double-click to unlock. Unlock is instant and, if your `scrcpy_args`
-  include `--turn-screen-off`, the phone panel is put back to sleep afterwards.
+### 📱 Phone Screen on your desktop
 
-Settings (standard Plasma config): which phone, keep-below, borderless, an X/Y
-position nudge (for fractional-scaling/multi-monitor), extra `scrcpy` args,
-accent colour, poll interval.
+<table>
+  <tr>
+    <td width="40%" valign="top"><img alt="The Phone Screen widget showing the live phone, the lock screen, Wi-Fi, a paused mirror and an offline phone" src="docs/media/phone-screen.gif"></td>
+    <td valign="top">
+      <br>
+      Add <b>Phone Screen</b> to your desktop and your phone lives there: the real screen, live, and you can click, scroll and type into it like any other window.
+      <br><br>
+      The header shows which phone it is and whether it's on USB or Wi-Fi. Underneath are volume, <b>Back</b>, <b>Home</b>, <b>Recent apps</b> and a lock button that always matches the phone, even when it locks itself on a timeout.
+      <br><br>
+      Lock the phone and the mirror hides; double-click to unlock it again. When a game or video goes fullscreen the mirror steps aside and comes back when you're done. If the phone is out of reach, the widget says so and reconnects the moment it's back.
+      <br><br>
+      Want it bigger? <b>Pop out</b> opens the phone in its own movable window.
+    </td>
+  </tr>
+</table>
 
-## Phone Manager widget (system tray)
+### 🗂️ Phone Manager in your tray
 
-Add it from **system tray → Add Widgets → "Phone Manager"**, or drop it into the
-tray's configured entries. Clicking the tray icon drops down a tabbed panel:
+<table>
+  <tr>
+    <td valign="top">
+      <br>
+      <b>Phone Manager</b> puts the same phone one click away in your system tray, along with the webcam and every setting.
+      <br><br>
+      There's only ever one mirror. Open the tray popup and the phone moves into it, unlocking as it goes; close the popup and it slides straight back to your desktop widget without reconnecting.
+      <br><br>
+      Drag the handle at the bottom to make the phone bigger or smaller, and the popup remembers the size for that phone's screen. Pin it open to keep using the phone while you click around your desktop.
+      <br><br>
+      <table>
+        <tr><td>📱 <b>Phone</b></td><td>The live mirror with volume, navigation and lock</td></tr>
+        <tr><td>📷 <b>Webcam</b></td><td>A live camera preview and every capture option</td></tr>
+        <tr><td>⚙️ <b>Settings</b></td><td>Your phones and everything about how they connect</td></tr>
+      </table>
+    </td>
+    <td width="40%" valign="top"><img alt="Phone Manager opening from the tray on the Phone, Webcam and Settings tabs, then searching" src="docs/media/phone-manager.gif"></td>
+  </tr>
+</table>
 
-* **Phone** — the same live mirror as the desktop widget (volume, lock/unlock,
-  pop-out, Back/Home/Recents). Opening the popup auto-unlocks the phone; closing
-  it hands the mirror back to the desktop widget (or locks + stops it).
-* **Camera** — the webcam live preview and every `scrcpy` camera option.
-* **Settings** — the per-device daemon settings (so `config.json` never needs
-  editing by hand).
-* **Pin** (top-right) — keep the popup open and the mirror on top, so you can
-  actually use the phone without the popup closing when it loses focus.
+#### 🔎 Search everything
 
-> A tray popup closes when it loses focus, and clicking the mirror (a separate
-> window) does exactly that — so the embedded mirror is only fully *usable* when
-> **pinned**. Unpinned it's a glance.
+Start typing in the popup to find any setting, phone or action. Press <kbd>Enter</kbd> to run the top result, so locking the phone or jumping to the webcam is a word away.
 
-## Phone Camera (virtual webcam)
+<p align="center"><img alt="Searching Phone Manager for tether settings and the lock action" src="docs/media/search.jpg" width="70%"></p>
 
-A second, independent feature: use the phone's camera as a regular Linux webcam.
-Unlike the screen mirror it **never auto-launches** — the phone is contacted only
-when something wants frames.
-
-* `v4l2loopback` provides a persistent virtual camera named **"Phone Camera"**
-  (on `/dev/video9` by default) that shows up in every app's camera list.
-* `camera_daemon.py` (the `linux-phonecam` service) watches that device. When a
-  consumer opens it — a real app, **or** the Camera tab showing its live preview
-  — it runs `scrcpy --video-source=camera --v4l2-sink=/dev/video9 …` with your
-  current settings, and disconnects when the last consumer goes away.
-* The feed follows the faster link (USB ⇄ Wi-Fi) live.
-
-> Because nothing connects until an app opens the camera, the first frame arrives
-> ~1–3 s after the app starts. Most apps tolerate a delayed first frame.
-
-Camera settings live under a top-level **`camera`** block in `config.json` (the
-webcam is global, not per-phone):
-
-| key | meaning |
-|-----|---------|
-| `active_serial` | which phone; `""` = auto (USB phone first, else a saved IP) |
-| `video_nr` | the `/dev/videoN` the loopback is created on (match `modprobe.d`) |
-| `facing` | `back` / `front` / `external` (ignored if `camera_id` is set) |
-| `camera_id` | explicit scrcpy `--camera-id` (overrides `facing`) |
-| `resolution` | `"WxH"` or `""` for the camera default |
-| `fps` | capture frame rate, `0` = default |
-| `aspect_ratio` | e.g. `"16:9"`, `"sensor"`, or `""` |
-| `zoom` | scrcpy `--camera-zoom` initial value |
-| `high_speed` | scrcpy `--camera-high-speed` |
-| `torch` | turn the camera torch on |
-| `extra_args` | extra scrcpy args appended verbatim |
+<p align="right"><a href="#top">back to top ⬆</a></p>
 
 ---
 
-## Configuration (`config.json`)
+<a id="webcam"></a>
 
-`config.json` is **git-ignored** and generated from `config.example.json` on
-install. Phones are **automatically added** the first time you plug them in,
-keyed by their ADB serial and seeded from `defaults`.
+## 📷 Your phone is a webcam
 
-Each phone entry supports:
+Your phone's camera shows up as **Phone Camera** in every app that uses a webcam: OBS, browsers, Discord and video calls. Nothing connects until something actually opens it, so the phone isn't kept awake for nothing.
 
-* **`name`** — friendly name shown in notifications and the widgets.
-* **`enabled`** — `false` to ignore this phone entirely.
-* **`enable_tcpip`** / **`tcpip_port`** — arm wireless ADB on plug-in (default
-  port `5555`), so the phone stays reachable over Wi-Fi until it reboots.
-* **`launch_scrcpy`** — auto-mirror over USB on plug-in. Turn this **off** for a
-  phone you mirror with the Phone Screen widget, so the daemon leaves that
-  phone's mirror entirely to the widget.
-* **`scrcpy_args`** — args passed to `scrcpy`. `defaults` ships with
-  `["--turn-screen-off", "--stay-awake"]`; a device's own `scrcpy_args` are
-  **appended** to (not a replacement for) the defaults.
-* **`notify`** — desktop notifications (default `false`).
-* **`unlock`** + **`lock_pin`** — auto-unlock before scrcpy (wakes, types the
-  PIN). PIN/password only; left blank by default so nothing is typed.
-* **`tether_failover`** / **`tether_function`** — USB-tethering failover and the
-  USB function used (`rndis` default, or `ncm`).
-* **`last_ip`** — the phone's LAN IP, **auto-updated on every USB connect** so the
-  Wi-Fi fallback survives reboots. Not set by hand.
-* **`mode`** / **`orientation`** / **`display_launcher`** / **`dex_desktop_mode`**
-  — clone vs extended-display ("Phone (DEX)") behaviour for the daemon's own
-  scrcpy launchers.
-* **`kdeconnect_notify`** — post clickable KDE Connect notifications that open
-  scrcpy and expand the phone's shade.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/media/webcam-flow-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/media/webcam-flow-light.svg">
+    <img alt="An app opens Phone Camera, the webcam daemon wakes the phone camera and streams it, then lets the phone go when the app closes" src="docs/media/webcam-flow-dark.svg" width="100%">
+  </picture>
+</p>
 
-The config is re-read automatically whenever you edit and save it.
+<table>
+  <tr>
+    <td width="33%" valign="top"><img alt="Webcam tab with a live preview" src="docs/media/webcam.jpg"><p align="center"><b>Live preview</b> — see the shot while you set it up</p></td>
+    <td width="33%" valign="top"><img alt="Webcam tab showing the camera in use by OBS" src="docs/media/webcam-in-use.jpg"><p align="center"><b>In use</b> — see which app has the camera</p></td>
+    <td valign="top">
+      <br>
+      <b>Pick your shot</b>
+      <br><br>
+      📸 Back, front or external lens<br>
+      🖼️ Up to 4K, in 16:9, 4:3, 3:2 or 1:1<br>
+      🎞️ 60, 30, 24 or 15 frames a second<br>
+      🔄 Landscape, portrait, upside-down or mirrored<br>
+      🔍 Zoom<br>
+      🔦 Torch<br>
+      ⚡ High-speed capture
+      <br><br>
+      The feed follows the faster link, switching between USB and Wi-Fi as you plug and unplug.
+    </td>
+  </tr>
+</table>
 
-Example:
+---
 
-```json
-{
-    "defaults": {
-        "enabled": true,
-        "enable_tcpip": true,
-        "tcpip_port": 5555,
-        "launch_scrcpy": true,
-        "scrcpy_args": ["--turn-screen-off", "--stay-awake"],
-        "unlock": true,
-        "lock_pin": ""
-    },
-    "devices": {
-        "RFCY8112TKV": { "name": "Galaxy Z Fold", "lock_pin": "1234" }
-    }
-}
-```
+<a id="tether"></a>
 
-## Logs
+## 🛟 Internet backup through your phone
 
-```bash
-journalctl --user -u linux-android-daemon.service -u linux-phonecam.service -f
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/media/tether-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/media/tether-light.svg">
+    <img alt="When Wi-Fi or Ethernet drops, the plugged-in phone shares its connection over USB until the network is back" src="docs/media/tether-dark.svg" width="100%">
+  </picture>
+</p>
 
-## Security note
+Turn on **USB tether failover** for a phone and your PC stays online through it. The moment your Wi-Fi or Ethernet goes away, the plugged-in phone starts USB tethering; when a real network comes back, tethering switches off again. Pick RNDIS or NCM to suit your phone.
 
-`lock_pin` is stored in plaintext in the local (git-ignored) `config.json`.
-Anyone with read access to your home directory can read it. Don't commit it and
-don't enable auto-unlock on a shared machine.
+---
 
-## Updates
+### ✨ And the little things
 
-On pacman-based systems, `./install.sh` registers the git checkout with system updates. Every `pacman -Syu` fetches the checkout and, when upstream has new commits and your checkout has no local changes or commits of its own, fast-forwards it and reinstalls without restarting Plasma. You get a notification when an update is installed. If no desktop session is running during the update, the rest of the install finishes at your next login. Other distributions don't get this hook; run `git pull && ./install.sh` yourself.
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h4>🔓 Unlocks for you</h4>
+      Save your PIN and the phone unlocks itself when the mirror opens.
+    </td>
+    <td width="33%" valign="top">
+      <h4>🌑 Screen stays dark</h4>
+      The phone's own display switches off while you use it on your desktop.
+    </td>
+    <td width="33%" valign="top">
+      <h4>🎮 Steps aside for games</h4>
+      Fullscreen apps get the whole screen; the mirror comes back afterwards.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <h4>📚 Every phone you own</h4>
+      Each phone is remembered with its own settings. Pick which one to use, or ignore one entirely.
+    </td>
+    <td valign="top">
+      <h4>🔔 Clickable notifications</h4>
+      With KDE Connect, click a phone notification on your PC to open the mirror with the notification shade pulled down.
+    </td>
+    <td valign="top">
+      <h4>🖥️ Extended display</h4>
+      Give the phone a second screen of its own instead of mirroring the one in your hand.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <h4>🧭 Rotation that holds</h4>
+      Keep the phone in portrait or landscape while it's mirrored, however you turn it.
+    </td>
+    <td valign="top">
+      <h4>💬 Connect alerts</h4>
+      Get a desktop notification when a phone plugs in and when wireless debugging is ready.
+    </td>
+    <td valign="top">
+      <h4>💾 Survives a restart</h4>
+      Each phone's Wi-Fi address is saved, so it's found again over Wi-Fi after your computer restarts.
+    </td>
+  </tr>
+</table>
 
-Packages (for example from the AUR) pass `--aur` or set `LINUX_ANDROID_DAEMON_AUR=true` so the package manager handles updates instead, and no hook is registered. `./uninstall.sh` removes the hook.
+<p align="right"><a href="#top">back to top ⬆</a></p>
+
+---
+
+<a id="settings"></a>
+
+## 🎛️ Settings
+
+Everything lives on the **Settings** and **Webcam** tabs in Phone Manager and applies instantly. Each phone keeps its own settings, and you never need to edit a file.
+
+<table>
+  <tr>
+    <td width="50%"><img alt="Phone Manager settings with the phone list, device and connection options" src="docs/media/settings-phones.jpg"><p align="center"><b>Phones, device and connection</b> — name, auto-unlock, wireless debugging and tether failover</p></td>
+    <td width="50%"><img alt="Phone Manager mirror and notification settings" src="docs/media/settings-mirror.jpg"><p align="center"><b>Mirror and notifications</b> — screen off, stay awake, clone or extended display, rotation, scrcpy options and alerts</p></td>
+  </tr>
+</table>
+
+Right-click either widget and choose **Configure** for a few extras: which phone the desktop widget shows, whether it sits below other windows, a small position nudge for unusual scaling, extra scrcpy options for that widget and an accent colour.
+
+---
+
+<a id="how-it-works"></a>
+
+## 🧠 How it fits together
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/media/architecture-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/media/architecture-light.svg">
+    <img alt="The phone connects over USB or Wi-Fi to the adb server, the phone daemon and the webcam daemon, which feed the Phone Screen and Phone Manager widgets and the Phone Camera device" src="docs/media/architecture-dark.svg" width="100%">
+  </picture>
+</p>
+
+Three small user services do the work. The widgets never start `scrcpy` themselves: each one tells the phone daemon where it wants the phone to appear, and the daemon moves its one mirror window to whichever widget is showing. That's why the phone can jump between your desktop and the tray without reconnecting.
+
+| Service | What it does |
+| :-- | :-- |
+| `linux-android-adb` | Runs the adb server every other part shares |
+| `linux-android-daemon` | Wireless debugging, the mirror, auto-unlock, tether failover and KDE Connect notifications |
+| `linux-phonecam` | The on-demand webcam feed |
+
+Two command line tools come along for scripting: `phonescreenctl` (lock, unlock, volume, navigation, pop out) and `phonecamctl` (webcam settings and which phone to use).
+
+---
+
+<a id="configuration"></a>
+
+## ⚙️ Configuration
+
+Every setting from the Settings tab is saved in `config.json` in the repository folder. It's created for you on install, never committed, and picked up the moment you save a change. New phones are added automatically the first time they're plugged in, starting from `defaults`.
+
+<details>
+<summary><b>📱 Per-phone settings</b></summary>
+<br>
+
+| Key | Default | What it does |
+| :-- | :-- | :-- |
+| `name` | phone model | The name shown in the widgets and notifications |
+| `enabled` | `true` | `false` ignores the phone completely |
+| `enable_tcpip` | `true` | Switch on wireless debugging when the phone is plugged in |
+| `tcpip_port` | `5555` | The wireless debugging port |
+| `unlock` | `true` | Unlock the phone with `lock_pin` when the mirror opens |
+| `lock_pin` | `""` | Your PIN; nothing is typed while it's empty |
+| `screen_off` | `true` | Turn the phone's display off while it's mirrored |
+| `stay_awake` | `false` | Keep the phone awake while it's plugged in |
+| `mode` | `"clone"` | `"clone"` mirrors the screen, `"extended"` gives the phone a second display |
+| `display_launcher` | `""` | An app to start on the extended display |
+| `orientation` | `"portrait"` | Hold the phone in `"portrait"` or `"landscape"` while mirrored, or `"auto"` |
+| `scrcpy_args` | `[]` | Extra scrcpy options, added on top of the ones in `defaults` |
+| `tether_failover` | `false` | Share the phone's connection over USB when your network drops |
+| `tether_function` | `"rndis"` | `"rndis"` or `"ncm"` |
+| `notify` | `false` | Desktop notifications when the phone connects |
+| `kdeconnect_notify` | `false` | Clickable KDE Connect notifications (set in `defaults`) |
+| `last_ip` | saved for you | The phone's Wi-Fi address, updated every time it's plugged in |
+
+</details>
+
+<details>
+<summary><b>📷 Webcam settings</b></summary>
+<br>
+
+The webcam is shared by all phones, so its settings live in a separate `camera` block.
+
+| Key | What it does |
+| :-- | :-- |
+| `active_serial` | Which phone to use; empty picks the plugged-in phone first, then one on Wi-Fi |
+| `video_nr` | The `/dev/videoN` number of the Phone Camera device |
+| `facing` | `"back"`, `"front"` or `"external"` |
+| `camera_id` | A specific camera, overriding `facing` |
+| `resolution` | A height like `"1080"`, or an exact `"1920x1080"` |
+| `fps` | Frames per second |
+| `aspect_ratio` | `"16:9"`, `"4:3"`, `"3:2"` or `"1:1"` |
+| `rotation` | `"@0"`, `"@90"`, `"@180"`, `"@270"` or `"flip0"` for mirrored |
+| `zoom` | Starting zoom |
+| `torch` | Turn the torch on |
+| `high_speed` | High-speed capture |
+| `extra_args` | Extra scrcpy options for the camera |
+
+</details>
+
+> [!NOTE]
+> Your PIN is stored as plain text in `config.json`, which only lives on your machine. Leave auto-unlock off on a computer other people can log into.
+
+---
+
+<a id="faq"></a>
+
+## 💬 Questions
+
+<details>
+<summary><b>Does my phone need to be rooted?</b></summary>
+<br>
+No. Everything goes through Android's own USB debugging, the same way <a href="https://github.com/Genymobile/scrcpy">scrcpy</a> works.
+</details>
+
+<details>
+<summary><b>It stopped connecting over Wi-Fi. Why?</b></summary>
+<br>
+Wireless debugging switches off when the phone restarts. Plug it in over USB once and it's back on. Your phone and PC also need to be on the same network.
+</details>
+
+<details>
+<summary><b>Why does clicking the mirror close the tray popup?</b></summary>
+<br>
+The phone is its own window floating over the popup, and Plasma closes popups when you click somewhere else. Pin the popup open with the pin button and you can use the phone as long as you like.
+</details>
+
+<details>
+<summary><b>Does the webcam drain my phone?</b></summary>
+<br>
+Only while it's in use. The camera connects when an app opens Phone Camera or you look at the preview, and lets go of the phone as soon as nothing is watching. The first frame takes a second or two to arrive.
+</details>
+
+<details>
+<summary><b>Can I use more than one phone?</b></summary>
+<br>
+Yes. Every phone you plug in is remembered with its own settings. Choose the one to use from the list in Phone Manager, and point each desktop widget at a phone from its Configure dialog.
+</details>
+
+<details>
+<summary><b>Where are the logs?</b></summary>
+<br>
+<code>journalctl --user -u linux-android-daemon -u linux-phonecam -f</code>
+</details>
+
+---
+
+<p align="center">
+  Built on <a href="https://github.com/Genymobile/scrcpy">scrcpy</a>. Android-Daemon is an independent project and is not affiliated with Google, Genymobile or KDE.
+</p>
+
+<p align="center"><a href="#top">back to top ⬆</a></p>

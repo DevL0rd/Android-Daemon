@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560">
+<defs>
+<linearGradient id="bgd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#182544"/></linearGradient>
+<clipPath id="clipd"><rect width="1280" height="560" rx="20"/></clipPath>
+<style>
+.title{font:800 84px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif;letter-spacing:-2px}
+.sub{font:500 26px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif}
+.pill{font:600 17px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif}
+.h{font:700 22px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif}
+.b{font:500 16px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif}
+.s{font:600 13px 'Inter','Segoe UI','Noto Sans',Helvetica,Arial,sans-serif;letter-spacing:.6px}
+.m{font:600 14px 'JetBrains Mono','Fira Code',Menlo,Consolas,monospace}
+
+</style>
+</defs>
+<g clip-path="url(#clipd)"><rect width="1280" height="560" fill="url(#bgd)"/>
+<text x="48" y="56" class="s" fill="#6f7b99">HOW IT FITS TOGETHER</text>
+<rect x="48" y="96" width="210" height="400" rx="18" fill="#1b2031" stroke="#2f3852" stroke-width="1.5"/>
+<g transform="translate(153,170) scale(1.6)"><rect x="-13" y="-22" width="26" height="44" rx="5" fill="none" stroke="#3ddc84" stroke-width="2.6"/><rect x="-5" y="15" width="10" height="2.6" rx="1.3" fill="#3ddc84"/></g>
+<text x="153" y="244" text-anchor="middle" class="h" fill="#f4f7ff">Your phone</text>
+<text x="153" y="268" text-anchor="middle" class="b" fill="#aab6d3">USB debugging on</text>
+<g transform="translate(100,344)" fill="none" stroke="#3daee9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M0 16 V-14 M-5 -9 L0 -16 L5 -9 M0 6 L-9 -2 V-7 M0 0 L8 -6 V-10"/><circle cx="0" cy="16" r="3" fill="#3daee9"/><circle cx="-9" cy="-9" r="2.4" fill="#3daee9"/><rect x="6" y="-13" width="4.5" height="4.5" fill="#3daee9"/></g>
+<text x="124" y="350" class="pill" fill="#3daee9">USB</text>
+<g transform="translate(100,420)" fill="none" stroke="#3ddc84" stroke-width="2.8" stroke-linecap="round"><path d="M-16 -4 A23 23 0 0 1 16 -4"/><path d="M-10 3 A14 14 0 0 1 10 3"/><circle cx="0" cy="11" r="2.6" fill="#3ddc84"/></g>
+<text x="124" y="428" class="pill" fill="#3ddc84">Wi-Fi :5555</text>
+<rect x="370" y="96" width="370" height="110" rx="14" fill="#1b2031" stroke="#2f3852" stroke-width="1.5"/>
+<rect x="370" y="112" width="4" height="78" rx="2" fill="#6f7b99"/>
+<text x="392" y="130" class="h" fill="#f4f7ff">adb server</text>
+<text x="392" y="152" class="m" fill="#6f7b99">linux-android-adb</text>
+<text x="392" y="176" class="b" fill="#aab6d3">Keeps one steady connection</text>
+<text x="392" y="197" class="b" fill="#aab6d3">to every phone</text>
+<rect x="370" y="226" width="370" height="170" rx="14" fill="#1b2031" stroke="#2f3852" stroke-width="1.5"/>
+<rect x="370" y="242" width="4" height="138" rx="2" fill="#3daee9"/>
+<text x="392" y="260" class="h" fill="#f4f7ff">Phone daemon</text>
+<text x="392" y="282" class="m" fill="#3daee9">linux-android-daemon</text>
+<text x="392" y="306" class="b" fill="#aab6d3">Arms wireless ADB, follows USB ⇄ Wi-Fi,</text>
+<text x="392" y="327" class="b" fill="#aab6d3">owns the one screen mirror, unlocks,</text>
+<text x="392" y="348" class="b" fill="#aab6d3">tethers when your internet drops,</text>
+<text x="392" y="369" class="b" fill="#aab6d3">forwards KDE Connect notifications</text>
+<rect x="370" y="416" width="370" height="110" rx="14" fill="#1b2031" stroke="#2f3852" stroke-width="1.5"/>
+<rect x="370" y="432" width="4" height="78" rx="2" fill="#bb9af7"/>
+<text x="392" y="450" class="h" fill="#f4f7ff">Webcam daemon</text>
+<text x="392" y="472" class="m" fill="#bb9af7">linux-phonecam</text>
+<text x="392" y="496" class="b" fill="#aab6d3">Wakes the phone camera only</text>
+<text x="392" y="517" class="b" fill="#aab6d3">while something is watching</text>
+<rect x="850" y="96" width="382" height="118" rx="14" fill="#1b2031" stroke="#2f3852" stroke-width="1.5"/>
+<rect x="850" y="112" width="4" height="86" rx="2" fill="#3daee9"/>
+<text x="872" y="130" class="h" fill="#f4f7ff">Phone Screen</text>
+<text x="872" y="152" class="m" fill="#3daee9">desktop widget</text>
+<text x="872" y="176" class="b" fill="#aab6d3">A live, touchable mirror pinned</text>
+<text x="872" y="197" class="b" fill="#aab6d3">on your desktop</text>
+<rect x="850" y="234" width="382" height="118" rx="14" fill="#1b2031" stroke="#2f3852" stroke-width="1.5"/>
+<rect x="850" y="250" width="4" height="86" rx="2" fill="#3daee9"/>
+<text x="872" y="268" class="h" fill="#f4f7ff">Phone Manager</text>
+<text x="872" y="290" class="m" fill="#3daee9">tray widget</text>
+<text x="872" y="314" class="b" fill="#aab6d3">Mirror, webcam and settings</text>
+<text x="872" y="335" class="b" fill="#aab6d3">in your system tray</text>
+<rect x="850" y="372" width="382" height="154" rx="14" fill="#1b2031" stroke="#2f3852" stroke-width="1.5"/>
+<rect x="850" y="388" width="4" height="122" rx="2" fill="#bb9af7"/>
+<text x="872" y="406" class="h" fill="#f4f7ff">Phone Camera</text>
+<text x="872" y="428" class="m" fill="#bb9af7">v4l2loopback</text>
+<text x="872" y="452" class="b" fill="#aab6d3">/dev/video9, a normal webcam</text>
+<text x="872" y="473" class="b" fill="#aab6d3">for OBS, browsers, Discord,</text>
+<text x="872" y="494" class="b" fill="#aab6d3">video calls and anything else</text>
+<path d="M258 300 C314 300, 314 151, 370 151" fill="none" stroke="#2f3852" stroke-width="3.5999999999999996" stroke-linecap="round"/>
+<circle r="4" fill="#3daee9"><animateMotion dur="2.4s" begin="-0.00s" repeatCount="indefinite" path="M258 300 C314 300, 314 151, 370 151"/></circle>
+<circle r="4" fill="#3daee9"><animateMotion dur="2.4s" begin="-1.20s" repeatCount="indefinite" path="M258 300 C314 300, 314 151, 370 151"/></circle>
+<path d="M258 300 C314 300, 314 311, 370 311" fill="none" stroke="#2f3852" stroke-width="3.5999999999999996" stroke-linecap="round"/>
+<circle r="4" fill="#3daee9"><animateMotion dur="2.4s" begin="-0.00s" repeatCount="indefinite" path="M258 300 C314 300, 314 311, 370 311"/></circle>
+<circle r="4" fill="#3daee9"><animateMotion dur="2.4s" begin="-1.20s" repeatCount="indefinite" path="M258 300 C314 300, 314 311, 370 311"/></circle>
+<path d="M258 300 C314 300, 314 471, 370 471" fill="none" stroke="#2f3852" stroke-width="3.5999999999999996" stroke-linecap="round"/>
+<circle r="4" fill="#bb9af7"><animateMotion dur="2.4s" begin="-0.00s" repeatCount="indefinite" path="M258 300 C314 300, 314 471, 370 471"/></circle>
+<circle r="4" fill="#bb9af7"><animateMotion dur="2.4s" begin="-1.20s" repeatCount="indefinite" path="M258 300 C314 300, 314 471, 370 471"/></circle>
+<path d="M740 290 C795 290, 795 155, 850 155" fill="none" stroke="#2f3852" stroke-width="3.5999999999999996" stroke-linecap="round"/>
+<circle r="4" fill="#3daee9"><animateMotion dur="2s" begin="-0.00s" repeatCount="indefinite" path="M740 290 C795 290, 795 155, 850 155"/></circle>
+<circle r="4" fill="#3daee9"><animateMotion dur="2s" begin="-1.00s" repeatCount="indefinite" path="M740 290 C795 290, 795 155, 850 155"/></circle>
+<path d="M740 330 C795 330, 795 293, 850 293" fill="none" stroke="#2f3852" stroke-width="3.5999999999999996" stroke-linecap="round"/>
+<circle r="4" fill="#3daee9"><animateMotion dur="2s" begin="-0.00s" repeatCount="indefinite" path="M740 330 C795 330, 795 293, 850 293"/></circle>
+<circle r="4" fill="#3daee9"><animateMotion dur="2s" begin="-1.00s" repeatCount="indefinite" path="M740 330 C795 330, 795 293, 850 293"/></circle>
+<path d="M740 471 C795 471, 795 449, 850 449" fill="none" stroke="#2f3852" stroke-width="3.5999999999999996" stroke-linecap="round"/>
+<circle r="4" fill="#bb9af7"><animateMotion dur="2s" begin="-0.00s" repeatCount="indefinite" path="M740 471 C795 471, 795 449, 850 449"/></circle>
+<circle r="4" fill="#bb9af7"><animateMotion dur="2s" begin="-1.00s" repeatCount="indefinite" path="M740 471 C795 471, 795 449, 850 449"/></circle>
+</g></svg>
