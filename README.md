@@ -391,7 +391,7 @@ Yes. Every phone you plug in is remembered with its own settings. Choose the one
 ---
 
 <p align="center">
-  Built on <a href="https://github.com/Genymobile/scrcpy">scrcpy</a>. Android-Daemon is an independent project and is not affiliated with Google, Genymobile or KDE.
+  Released under the <a href="LICENSE">MIT License</a>. Built on <a href="https://github.com/Genymobile/scrcpy">scrcpy</a>. Android-Daemon is an independent project and is not affiliated with Google, Genymobile or KDE.
 </p>
 
 <p align="center"><a href="#top">back to top ⬆</a></p>
