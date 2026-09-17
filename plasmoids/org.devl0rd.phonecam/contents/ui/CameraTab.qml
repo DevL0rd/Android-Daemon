@@ -53,7 +53,7 @@ PopScroll {
                 Connections {
                     target: root
                     function onPreviewTickChanged() {
-                        if (root.previewDir === "") return
+                        if (root.previewDir === "" || !previewArea.visible) return
                         var src = "file://" + root.previewDir + "/preview.jpg?t=" + root.previewTick
                         if (previewArea.useA) imgB.source = src
                         else imgA.source = src
