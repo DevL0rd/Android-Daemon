@@ -46,7 +46,7 @@ configure_camera_module() {
     pacman -Qq v4l2loopback-dkms >/dev/null 2>&1 || return 0
     echo "Writing /etc/modprobe.d + /etc/modules-load.d for the 'Phone Camera' device..."
     root_run tee /etc/modprobe.d/linux-phonecam.conf >/dev/null <<EOF
-# Linux-Android-Daemon :: phone webcam sink.
+# Android-Daemon :: phone webcam sink.
 # exclusive_caps=0 keeps the device always visible so apps can select it while
 # idle (selecting/opening it is what wakes the on-demand feed).
 options v4l2loopback video_nr=$VIDEO_NR card_label="Phone Camera" exclusive_caps=0 max_width=4096 max_height=4096
@@ -123,7 +123,7 @@ mkdir -p ~/.config/systemd/user
 
 cat <<EOF > ~/.config/systemd/user/linux-android-daemon.service
 [Unit]
-Description=Linux-Android-Daemon (wireless ADB + scrcpy + USB tethering failover)
+Description=Android-Daemon (wireless ADB + scrcpy + USB tethering failover)
 After=graphical-session.target
 
 [Service]
@@ -174,7 +174,7 @@ configure_plasma_local_file_access
 # 5. the on-demand camera daemon (separate service; does NOT auto-launch on plug-in)
 cat <<EOF > ~/.config/systemd/user/linux-phonecam.service
 [Unit]
-Description=Linux-Android-Daemon phone webcam (on-demand camera feed)
+Description=Android-Daemon phone webcam (on-demand camera feed)
 After=graphical-session.target
 
 [Service]
@@ -196,7 +196,7 @@ systemctl --user enable --now linux-phonecam.service >/dev/null 2>&1 \
 
 # 6. install the plasmoids (tray Phone Camera + desktop Phone Screen)
 if [ ! -e "$REPO_DIR/shared/common/FileWatcher.qml" ]; then
-    echo "  ! shared/common (Linux-Plasma-Shared submodule) is empty." >&2
+    echo "  ! shared/common (Plasma-Shared submodule) is empty." >&2
     echo "    Run: git submodule update --init --recursive" >&2
     exit 1
 fi
