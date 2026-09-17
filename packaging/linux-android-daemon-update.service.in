@@ -1,0 +1,12 @@
+[Unit]
+Description=Finish the Linux Android Daemon update from the last system update
+ConditionPathExists=%h/.local/state/linux-android-daemon/update-pending
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@CHECKOUT@
+ExecStart=@CHECKOUT@/install.sh --system-update
+
+[Install]
+WantedBy=graphical-session.target

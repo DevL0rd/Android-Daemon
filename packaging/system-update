@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+ID="linux-android-daemon"
+TITLE="Linux Android Daemon"
+STATE_FILE="${UPDATE_SOURCE_STATE:-/var/lib/$ID/source}"
+
+log() {
+    printf '%s: %s\n' "$ID" "$*"
+}
+
+[[ -r $STATE_FILE ]] || exit 0
+mapfile -t state <"$STATE_FILE"
+checkout="${state[0]:-}"
+owner="${state[1]:-}"
+[[ -n $checkout && -n $owner ]] || exit 0
+uid=$(id -u "$owner" 2>/dev/null) || exit 0
+home=$(getent passwd "$owner" | cut -d: -f6)
+
+as_owner() {
+    runuser -u "$owner" -- env -i HOME="$home" USER="$owner" LOGNAME="$owner" PATH="$home/.local/bin:/usr/local/bin:/usr/bin:/bin" \
+        LANG="${LANG:-C.UTF-8}" XDG_RUNTIME_DIR="/run/user/$uid" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" \
+        GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=15" "$@"
+}
+
+git_owner() {
+    as_owner git -C "$checkout" "$@"
+}
+
+if [[ ! -d $checkout ]] || ! git_owner rev-parse --git-dir >/dev/null 2>&1; then
+    log "checkout $checkout is gone or not a git repository, skipping"
+    exit 0
+fi
+git_owner rev-parse --abbrev-ref '@{upstream}' >/dev/null 2>&1 || exit 0
+if ! git_owner fetch --quiet; then
+    log "could not fetch updates for $checkout, skipping"
+    exit 0
+fi
+[[ $(git_owner rev-list --count 'HEAD..@{upstream}') -gt 0 ]] || exit 0
+if [[ -n $(git_owner status --porcelain --untracked-files=no) ]]; then
+    log "$checkout has local changes, skipping the update"
+    exit 0
+fi
+if [[ $(git_owner rev-list --count '@{upstream}..HEAD') -gt 0 ]]; then
+    log "$checkout has local commits that aren't upstream, skipping the update"
+    exit 0
+fi
+git_owner merge --ff-only --quiet '@{upstream}' || exit 0
+git_owner submodule update --init --recursive --quiet
+log "updated to $(git_owner rev-parse --short HEAD)"
+
+install -Dm755 "$checkout/packaging/system-update" "/usr/lib/$ID/system-update"
+install -Dm644 "$checkout/packaging/$ID-update.hook" "/etc/pacman.d/hooks/$ID-update.hook"
+if grep -q -- '--system-update-root' "$checkout/install.sh"; then
+    (cd "$checkout" && "$checkout/install.sh" --system-update-root --owner "$owner")
+fi
+if [[ -S /run/user/$uid/bus ]]; then
+    (cd "$checkout" && as_owner "$checkout/install.sh" --system-update)
+else
+    as_owner mkdir -p "$home/.local/state/$ID"
+    as_owner touch "$home/.local/state/$ID/update-pending"
+    log "$TITLE will finish updating at your next login"
+fi

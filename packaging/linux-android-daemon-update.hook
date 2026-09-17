@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Upgrade
+Type = Package
+Target = *
+
+[Action]
+Description = Updating Linux Android Daemon...
+When = PostTransaction
+Exec = /usr/lib/linux-android-daemon/system-update
+Depends = git

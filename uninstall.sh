@@ -1,5 +1,9 @@
 #!/bin/bash
 set -e
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/packaging/lib.sh"
+
+echo "Removing the system update hook..."
+unregister_system_updates
 
 echo "Stopping and disabling systemd user service..."
 systemctl --user disable --now linux-android-daemon.service 2>/dev/null || true

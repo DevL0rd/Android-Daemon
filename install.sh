@@ -9,6 +9,74 @@ if [ ! -f "$REPO_DIR/src/daemon.py" ]; then
     echo "Please run this script from the repository directory."
     exit 1
 fi
+source "$REPO_DIR/packaging/lib.sh"
+
+AUR=false
+SYSTEM_UPDATE=false
+SYSTEM_UPDATE_ROOT=false
+INSTALL_USER="$(id -un)"
+VIDEO_NR=9
+[[ ${LINUX_ANDROID_DAEMON_AUR:-} == @(1|true|yes) ]] && AUR=true
+while [ $# -gt 0 ]; do
+    case "$1" in
+    --aur) AUR=true ;;
+    --system-update) SYSTEM_UPDATE=true ;;
+    --system-update-root) SYSTEM_UPDATE_ROOT=true ;;
+    --owner) INSTALL_USER="$2"; shift ;;
+    -h|--help)
+        echo "Usage: ./install.sh [--aur]"
+        echo "Installs the daemon and widgets and, for a git checkout on a pacman system, updates them with every system update."
+        echo "  --aur  Installed by a package (also LINUX_ANDROID_DAEMON_AUR=true); no update hook is registered."
+        exit 0
+        ;;
+    *) echo "Unknown option: $1"; exit 1 ;;
+    esac
+    shift
+done
+
+root_run() {
+    if [ "$EUID" -eq 0 ]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
+configure_camera_module() {
+    pacman -Qq v4l2loopback-dkms >/dev/null 2>&1 || return 0
+    echo "Writing /etc/modprobe.d + /etc/modules-load.d for the 'Phone Camera' device..."
+    root_run tee /etc/modprobe.d/linux-phonecam.conf >/dev/null <<EOF
+# Linux-Android-Daemon :: phone webcam sink.
+# exclusive_caps=0 keeps the device always visible so apps can select it while
+# idle (selecting/opening it is what wakes the on-demand feed).
+options v4l2loopback video_nr=$VIDEO_NR card_label="Phone Camera" exclusive_caps=0 max_width=4096 max_height=4096
+EOF
+    echo v4l2loopback | root_run tee /etc/modules-load.d/linux-phonecam.conf >/dev/null
+    if [ -z "$(python3 -c "import sys;sys.path.insert(0,'$REPO_DIR/src');from core import camera as c;print(c.loopback_devnode($VIDEO_NR) or '')" 2>/dev/null)" ]; then
+        root_run modprobe -r v4l2loopback 2>/dev/null || true
+        root_run modprobe v4l2loopback || echo "  ! modprobe v4l2loopback failed (a reboot will load it from modules-load.d)"
+    fi
+}
+
+configure_uinput() {
+    lsmod | grep -q '^uinput' || root_run modprobe uinput 2>/dev/null || echo "  ! could not load uinput"
+    echo uinput | root_run tee /etc/modules-load.d/uinput.conf >/dev/null 2>&1 || true
+    root_run tee /etc/udev/rules.d/99-uinput-ydotool.rules >/dev/null 2>&1 <<'EOF' || true
+KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"
+EOF
+    root_run udevadm control --reload-rules 2>/dev/null && root_run udevadm trigger 2>/dev/null || true
+    if ! id -nG "$INSTALL_USER" | grep -qw input; then
+        root_run usermod -aG input "$INSTALL_USER" 2>/dev/null \
+            && echo "  added $INSTALL_USER to the 'input' group; log out and in once for it to take effect" || true
+    fi
+}
+
+if $SYSTEM_UPDATE_ROOT; then
+    [ "$EUID" -eq 0 ] || { echo "--system-update-root runs from the pacman hook"; exit 1; }
+    configure_camera_module
+    configure_uinput
+    exit 0
+fi
 
 configure_plasma_local_file_access() {
     if [ -L "$PLASMA_OVERRIDE" ]; then
@@ -27,6 +95,7 @@ configure_plasma_local_file_access() {
 # Install the tools the daemon shells out to (official repos: pacman).
 #   adb  -> android-tools     scrcpy -> scrcpy     preview/feed -> ffmpeg
 # (v4l2loopback for the virtual webcam is installed in the Phone Camera step below.)
+if ! $SYSTEM_UPDATE; then
 echo "Checking dependencies..."
 deps=()
 pacman -Qq android-tools >/dev/null 2>&1 || deps+=(android-tools)
@@ -38,6 +107,7 @@ if [ ${#deps[@]} -gt 0 ]; then
         echo "  ! could not install ${deps[*]} — install them manually before using the service"
 else
     echo "  base dependencies present (adb, scrcpy, ffmpeg)."
+fi
 fi
 
 # Generate the local (git-ignored) config from the template on first install.
@@ -80,32 +150,15 @@ systemctl --user enable --now linux-android-daemon.service
 echo ""
 echo "Setting up the Phone Camera (virtual webcam)..."
 
-VIDEO_NR=9
-
 # 1. v4l2loopback (the virtual camera kernel module) from the official repos
-if ! pacman -Qq v4l2loopback-dkms >/dev/null 2>&1; then
+if ! $SYSTEM_UPDATE && ! pacman -Qq v4l2loopback-dkms >/dev/null 2>&1; then
     echo "Installing v4l2loopback-dkms + utils (needs sudo)..."
     sudo pacman -S --needed v4l2loopback-dkms v4l2loopback-utils || \
-        echo "  ! could not install v4l2loopback — the webcam won't work until it is installed"
+        echo "  ! could not install v4l2loopback; the webcam won't work until it is installed"
 fi
 
 # 2. Make the loopback device persistent and named, created on boot
-if command -v sudo >/dev/null 2>&1 && pacman -Qq v4l2loopback-dkms >/dev/null 2>&1; then
-    echo "Writing /etc/modprobe.d + /etc/modules-load.d for the 'Phone Camera' device (sudo)..."
-    sudo tee /etc/modprobe.d/linux-phonecam.conf >/dev/null <<EOF
-# Linux-Android-Daemon :: phone webcam sink.
-# exclusive_caps=0 keeps the device always visible so apps can select it while
-# idle (selecting/opening it is what wakes the on-demand feed).
-options v4l2loopback video_nr=$VIDEO_NR card_label="Phone Camera" exclusive_caps=0 max_width=4096 max_height=4096
-EOF
-    echo v4l2loopback | sudo tee /etc/modules-load.d/linux-phonecam.conf >/dev/null
-
-    # Load it now (reload if it's loaded without our device present and not busy)
-    if [ -z "$(python3 -c "import sys;sys.path.insert(0,'$REPO_DIR/src');from core import camera as c;print(c.loopback_devnode($VIDEO_NR) or '')" 2>/dev/null)" ]; then
-        sudo modprobe -r v4l2loopback 2>/dev/null || true
-        sudo modprobe v4l2loopback || echo "  ! modprobe v4l2loopback failed (a reboot will load it from modules-load.d)"
-    fi
-fi
+$SYSTEM_UPDATE || configure_camera_module
 
 # 3. phonecamctl + phonescreenctl onto PATH (symlinked back to the repo)
 BIN_DIR="$HOME/.local/bin"
@@ -174,29 +227,20 @@ fi
 #    up, and the only cost is the panel staying on after unlock.
 echo ""
 echo "Setting up ydotool + kdotool (Phone Screen: panel-off after unlock)..."
-if ! command -v ydotool >/dev/null 2>&1; then
-    sudo pacman -S --needed --noconfirm ydotool 2>/dev/null \
-        || echo "  ! could not install ydotool (panel-off-after-unlock will be skipped)"
-fi
-if ! command -v kdotool >/dev/null 2>&1; then
-    if command -v paru >/dev/null 2>&1; then
-        paru -S --needed --noconfirm kdotool 2>/dev/null \
-            || echo "  ! could not install kdotool from the AUR (panel-off-after-unlock will be skipped)"
-    else
-        echo "  ! paru not found — install 'kdotool' from the AUR for panel-off-after-unlock"
+if ! $SYSTEM_UPDATE; then
+    if ! command -v ydotool >/dev/null 2>&1; then
+        sudo pacman -S --needed --noconfirm ydotool 2>/dev/null \
+            || echo "  ! could not install ydotool (panel-off-after-unlock will be skipped)"
     fi
-fi
-# uinput module (ydotool injects through it), now + on every boot
-lsmod | grep -q '^uinput' || sudo modprobe uinput 2>/dev/null || echo "  ! could not load uinput"
-echo uinput | sudo tee /etc/modules-load.d/uinput.conf >/dev/null 2>&1 || true
-# let your user open /dev/uinput (group 'input')
-sudo tee /etc/udev/rules.d/99-uinput-ydotool.rules >/dev/null 2>&1 <<'EOF' || true
-KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"
-EOF
-sudo udevadm control --reload-rules 2>/dev/null && sudo udevadm trigger 2>/dev/null || true
-if ! id -nG "$USER" | grep -qw input; then
-    sudo usermod -aG input "$USER" 2>/dev/null \
-        && echo "  added $USER to the 'input' group — LOG OUT/IN once for it to take effect" || true
+    if ! command -v kdotool >/dev/null 2>&1; then
+        if command -v paru >/dev/null 2>&1; then
+            paru -S --needed --noconfirm kdotool 2>/dev/null \
+                || echo "  ! could not install kdotool from the AUR (panel-off-after-unlock will be skipped)"
+        else
+            echo "  ! paru not found; install 'kdotool' from the AUR for panel-off-after-unlock"
+        fi
+    fi
+    configure_uinput
 fi
 # ydotoold user daemon (owns the socket ydotool talks to)
 if command -v ydotoold >/dev/null 2>&1; then
@@ -226,6 +270,12 @@ fi
 # into the user manager and restart the daemon so it inherits them.
 systemctl --user import-environment DISPLAY WAYLAND_DISPLAY YDOTOOL_SOCKET QML_XHR_ALLOW_FILE_READ 2>/dev/null || true
 systemctl --user restart linux-android-daemon.service 2>/dev/null || true
+
+if $SYSTEM_UPDATE; then
+    notify_updated "The phone daemon and its widgets are up to date. Restart Plasma or log out and back in to load the updated widgets."
+    exit 0
+fi
+register_system_updates "$REPO_DIR" "$AUR"
 
 echo ""
 echo "Done!"

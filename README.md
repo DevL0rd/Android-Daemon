@@ -250,3 +250,9 @@ journalctl --user -u linux-android-daemon.service -u linux-phonecam.service -f
 `lock_pin` is stored in plaintext in the local (git-ignored) `config.json`.
 Anyone with read access to your home directory can read it. Don't commit it and
 don't enable auto-unlock on a shared machine.
+
+## Updates
+
+On pacman-based systems, `./install.sh` registers the git checkout with system updates. Every `pacman -Syu` fetches the checkout and, when upstream has new commits and your checkout has no local changes or commits of its own, fast-forwards it and reinstalls without restarting Plasma. You get a notification when an update is installed. If no desktop session is running during the update, the rest of the install finishes at your next login. Other distributions don't get this hook; run `git pull && ./install.sh` yourself.
+
+Packages (for example from the AUR) pass `--aur` or set `LINUX_ANDROID_DAEMON_AUR=true` so the package manager handles updates instead, and no hook is registered. `./uninstall.sh` removes the hook.
