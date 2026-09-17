@@ -280,11 +280,10 @@ def usb_present(serial):
     if not serial:
         return False
     try:
-        out = subprocess.run(["adb", "devices", "-l"], capture_output=True,
-                             text=True, timeout=8).stdout
-    except (OSError, subprocess.TimeoutExpired):
+        lines = cam.adb_device_lines(timeout=8)
+    except OSError:
         return False
-    for line in out.splitlines()[1:]:
+    for line in lines:
         parts = line.split()
         if len(parts) >= 2 and parts[0] == serial and parts[1] == "device" and "usb:" in line:
             return True
@@ -321,11 +320,10 @@ def reachable(serial):
             or cfg.get("defaults", {}).get("tcpip_port", 5555)
         target = "%s:%s" % (ip, port)
         try:
-            sl.adb(None, "connect", target, timeout=2)
+            cam.adb_server("host:connect:" + target, timeout=2)
             # healthy wifi adb answers in <<1s; a 2s cap means a dropped link is
             # noticed in ~2s instead of hanging on the dead socket.
-            r = sl.adb(target, "shell", "true", timeout=2)
-            v = r is not None and r.returncode == 0
+            v = cam.adb_server("shell:true", transport=target, timeout=2)[0]
         except Exception:
             v = False
         if not v:
@@ -334,7 +332,7 @@ def reachable(serial):
             # just says "already connected" and we can never reconnect. Drop it here so
             # the next probe does a FRESH connect (which works once Wi-Fi is back).
             try:
-                sl.adb(None, "disconnect", target, timeout=4)
+                cam.adb_server("host:disconnect:" + target, timeout=4)
             except Exception:
                 pass
     # stamp AFTER the probe so the 5s gap holds even when the probe itself is slow

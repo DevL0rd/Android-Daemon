@@ -24,6 +24,9 @@ import shutil
 import signal
 import subprocess
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from core.camera import adb_server, adb_device_lines
+
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(REPO_DIR, "config.json")
 
@@ -77,10 +80,10 @@ def get_serial(target):
 def usb_present(serial):
     """True if `serial` is connected on a USB transport in 'device' state."""
     try:
-        out = adb(None, "devices", "-l", capture=True, timeout=10).stdout
+        lines = adb_device_lines()
     except Exception:
         return False
-    for line in out.splitlines()[1:]:
+    for line in lines:
         parts = line.split()
         if len(parts) >= 2 and parts[0] == serial and parts[1] == "device" and "usb:" in line:
             return True

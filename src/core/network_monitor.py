@@ -4,7 +4,7 @@ import threading
 import subprocess
 
 class NetworkMonitor:
-    """Polls NetworkManager and reports whether the PC has a *real* uplink.
+    """Follows NetworkManager and reports whether the PC has a *real* uplink.
 
     A "real" uplink is a connected wifi or (non-USB) ethernet device. The phone's
     own USB-tether interface is itself an ethernet device, so it is explicitly
@@ -51,10 +51,22 @@ class NetworkMonitor:
             return True
         return False
 
+    def _check(self):
+        online = self.has_real_uplink()
+        if online != self.online:
+            self.online = online
+            self.on_change(online)
+
     def _loop(self):
         while True:
-            online = self.has_real_uplink()
-            if online != self.online:
-                self.online = online
-                self.on_change(online)
+            self._check()
+            try:
+                monitor = subprocess.Popen(["nmcli", "monitor"], stdout=subprocess.PIPE,
+                                           stderr=subprocess.DEVNULL, text=True)
+            except OSError:
+                time.sleep(self.poll_interval)
+                continue
+            for _ in monitor.stdout:
+                self._check()
+            monitor.wait()
             time.sleep(self.poll_interval)

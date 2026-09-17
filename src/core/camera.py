@@ -99,14 +99,80 @@ def adb(target, *args, timeout=10, capture=False):
     return subprocess.run(cmd, capture_output=capture, text=True, timeout=timeout)
 
 
+ADB_SERVER = ("127.0.0.1", 5037)
+
+
+def _adb_read_exact(sock, size):
+    data = b""
+    while len(data) < size:
+        chunk = sock.recv(size - len(data))
+        if not chunk:
+            raise OSError("adb server closed the connection")
+        data += chunk
+    return data
+
+
+def _adb_server_once(request, transport, timeout):
+    import socket
+    with socket.create_connection(ADB_SERVER, timeout=timeout) as sock:
+        sock.settimeout(timeout)
+
+        def send(text):
+            payload = text.encode()
+            sock.sendall(b"%04x" % len(payload) + payload)
+
+        def status():
+            head = _adb_read_exact(sock, 4)
+            if head == b"OKAY":
+                return True, b""
+            if head == b"FAIL":
+                return False, _adb_read_exact(sock, int(_adb_read_exact(sock, 4), 16))
+            raise OSError("unexpected adb server reply %r" % head)
+
+        if transport:
+            send("host:transport:" + transport)
+            ok, message = status()
+            if not ok:
+                return False, message
+        send(request)
+        ok, message = status()
+        if not ok:
+            return False, message
+        chunks = []
+        while True:
+            chunk = sock.recv(65536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        return True, b"".join(chunks)
+
+
+def adb_server(request, transport=None, timeout=10):
+    try:
+        return _adb_server_once(request, transport, timeout)
+    except ConnectionRefusedError:
+        try:
+            subprocess.run(["adb", "start-server"], capture_output=True, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return False, b""
+        return _adb_server_once(request, transport, timeout)
+
+
+def adb_device_lines(timeout=10):
+    ok, reply = adb_server("host:devices-l", timeout=timeout)
+    if not ok:
+        raise OSError(reply.decode(errors="replace"))
+    return reply[4:].decode(errors="replace").splitlines()
+
+
 def usb_serials():
     """{serial: model} for phones on a USB transport in 'device' state."""
     out_map = {}
     try:
-        out = adb(None, "devices", "-l", capture=True, timeout=10).stdout
+        lines = adb_device_lines()
     except Exception:
         return out_map
-    for line in out.splitlines()[1:]:
+    for line in lines:
         line = line.strip()
         if not line:
             continue
@@ -263,6 +329,91 @@ def device_consumers(devnode, exclude_pids=()):
         if m:
             pids.add(int(m.group(1)))
     return [{"pid": p, "name": _comm(p)} for p in sorted(pids) if p not in exclude]
+
+
+def _holds_device(pid, targets):
+    fddir = "/proc/%d/fd" % pid
+    try:
+        for fd in os.listdir(fddir):
+            try:
+                if os.readlink(os.path.join(fddir, fd)) in targets:
+                    return True
+            except OSError:
+                continue
+    except OSError:
+        return False
+    try:
+        with open("/proc/%d/maps" % pid) as f:
+            for line in f:
+                if any(target in line for target in targets):
+                    return True
+    except OSError:
+        pass
+    return False
+
+
+class ConsumerWatch:
+
+    IN_OPEN = 0x20
+    IN_CLOSE = 0x08 | 0x10
+    IN_NONBLOCK = 0o4000
+    IN_CLOEXEC = 0o2000000
+
+    def __init__(self):
+        import ctypes
+        self._libc = ctypes.CDLL("libc.so.6", use_errno=True)
+        self._fd = self._libc.inotify_init1(self.IN_NONBLOCK | self.IN_CLOEXEC)
+        if self._fd < 0:
+            raise OSError(ctypes.get_errno(), "inotify_init1 failed")
+        self._wd = -1
+        self._devnode = None
+        self._known = []
+        self._scan_due = True
+
+    def _watch(self, devnode):
+        if devnode == self._devnode and self._wd >= 0:
+            return
+        if self._wd >= 0:
+            self._libc.inotify_rm_watch(self._fd, self._wd)
+        self._wd = self._libc.inotify_add_watch(self._fd, devnode.encode(), self.IN_OPEN | self.IN_CLOSE)
+        self._devnode = devnode
+        self._scan_due = True
+
+    def _drain(self):
+        import struct
+        opens = closes = 0
+        while True:
+            try:
+                data = os.read(self._fd, 4096)
+            except BlockingIOError:
+                return opens > closes
+            except OSError:
+                self._wd = -1
+                return True
+            if not data:
+                return opens > closes
+            offset = 0
+            while offset + 16 <= len(data):
+                _, mask, _, length = struct.unpack_from("iIII", data, offset)
+                if mask & self.IN_OPEN:
+                    opens += 1
+                if mask & self.IN_CLOSE:
+                    closes += 1
+                offset += 16 + length
+
+    def consumers(self, devnode, exclude_pids=()):
+        exclude = set(exclude_pids)
+        self._watch(devnode)
+        if self._drain() or self._wd < 0:
+            self._scan_due = True
+        if not self._scan_due:
+            targets = (devnode, os.path.realpath(devnode))
+            known = [c for c in self._known if c["pid"] not in exclude]
+            if all(_holds_device(c["pid"], targets) for c in known):
+                return known
+        self._scan_due = False
+        self._known = device_consumers(devnode, exclude)
+        return self._known
 
 
 # --- scrcpy camera command --------------------------------------------------

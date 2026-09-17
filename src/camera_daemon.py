@@ -34,6 +34,7 @@ POLL = 0.5                 # main loop cadence (s)
 PREVIEW_TTL = 4.0          # a preview heartbeat counts as "wants frames" for this long
 SETTINGS_DEBOUNCE = 0.5    # wait this long after the last settings change before rebuilding
 PROBE_TTL = 30.0           # honour a probe request newer than this
+SIZE_PROBE_RETRY = 30.0
 # A v4l2 consumer's device handle is often held by a short-lived child/thread
 # that flickers in and out of `fuser`/`lsof` while streaming. Keep the feed up
 # for this long after the last sighting so a single missed poll doesn't tear it
@@ -66,11 +67,13 @@ class CameraDaemon:
         self.geom = None             # geometry (size/rotation/lens) scrcpy is locked to
         self.last_pin_try = 0.0      # rate-limit set-caps attempts
         self.last_consumer_seen = 0.0  # last time a consumer was detected
+        self.consumer_watch = cam.ConsumerWatch()
         self.error = ""
         self.config_mtime = 0.0
         self.config = {}
         self.caps = cam.load_caps()
         self._probing = set()        # serials currently being capability-probed
+        self._size_probe_failure = (None, 0.0)
         os.makedirs(cam.RUNTIME_DIR, exist_ok=True)
 
     # --- helpers ----------------------------------------------------------
@@ -214,6 +217,9 @@ class CameraDaemon:
         one. Runs in a thread; cached to tmpfs."""
         if not target or self._feeder_alive() or "sizes" in self._probing:
             return
+        failed_target, failed_at = self._size_probe_failure
+        if failed_target == target and time.time() - failed_at < SIZE_PROBE_RETRY:
+            return
         if cam.load_camera_sizes():
             return
         self._probing.add("sizes")
@@ -222,7 +228,10 @@ class CameraDaemon:
             sizes = cam.probe_camera_sizes(target)
             if sizes:
                 cam.save_camera_sizes(sizes)
+                self._size_probe_failure = (None, 0.0)
                 print("[probe] camera sizes cached: %s" % {k: len(v) for k, v in sizes.items()})
+            else:
+                self._size_probe_failure = (target, time.time())
             self._probing.discard("sizes")
 
         threading.Thread(target=run, daemon=True).start()
@@ -334,7 +343,7 @@ class CameraDaemon:
             else:
                 self.fail_count = 0
 
-        consumers = cam.device_consumers(devnode, exclude_pids=self._feeder_pids())
+        consumers = self.consumer_watch.consumers(devnode, exclude_pids=self._feeder_pids())
         preview = self._preview_active()
         now0 = time.time()
         # The applet's own preview (plasmashell) is tracked via the heartbeat,
