@@ -158,6 +158,52 @@ def adb_server(request, transport=None, timeout=10):
         return _adb_server_once(request, transport, timeout)
 
 
+def wifi_reachable(target, timeout=2):
+    try:
+        adb_server("host:connect:" + target, timeout=timeout)
+        if adb_server("shell:true", transport=target, timeout=timeout)[0]:
+            return True
+    except Exception:
+        pass
+    try:
+        adb_server("host:disconnect:" + target, timeout=4)
+    except Exception:
+        pass
+    return False
+
+
+class ReachabilityProbe:
+    ONLINE_RECHECK = 5.0
+    OFFLINE_RETRY = (2.0, 5.0)
+
+    def __init__(self):
+        import threading
+        self._lock = threading.Lock()
+        self._state = {}
+
+    def reachable(self, target):
+        import threading
+        import time
+        now = time.monotonic()
+        with self._lock:
+            state = self._state.setdefault(target, {"ok": False, "due": 0.0, "running": False, "failures": 0})
+            if state["running"] or now < state["due"]:
+                return state["ok"]
+            state["running"] = True
+
+        def run():
+            ok = wifi_reachable(target)
+            with self._lock:
+                state["ok"] = ok
+                state["failures"] = 0 if ok else state["failures"] + 1
+                retry = self.OFFLINE_RETRY[min(state["failures"], len(self.OFFLINE_RETRY)) - 1] if not ok else self.ONLINE_RECHECK
+                state["due"] = time.monotonic() + retry
+                state["running"] = False
+
+        threading.Thread(target=run, daemon=True).start()
+        return state["ok"]
+
+
 def adb_device_lines(timeout=10):
     ok, reply = adb_server("host:devices-l", timeout=timeout)
     if not ok:

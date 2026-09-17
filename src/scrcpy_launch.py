@@ -107,10 +107,11 @@ def resolve_auto_target(serial, config):
 
 def is_locked(target):
     try:
-        out = adb(target, "shell", "dumpsys", "window", capture=True, timeout=10).stdout
-        return any(tok in out for tok in LOCK_TOKENS)
+        ok, out = adb_server("shell:dumpsys window", transport=target, timeout=5)
     except Exception:
         return False
+    text = out.decode(errors="replace") if ok else ""
+    return any(tok in text for tok in LOCK_TOKENS)
 
 def unlock(target, cfg):
     """Wake the phone and, if it's on a secure lock, type the PIN to unlock.

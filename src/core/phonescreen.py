@@ -102,14 +102,21 @@ def pick_winner(claims):
     return max(live, key=lambda c: c.get("priority", 0))
 
 
+_status_written = {"body": None}
+
+
 def write_status(**kw):
     _runtime()
+    body = json.dumps(kw)
     with _status_lock:
+        if body == _status_written["body"] and os.path.exists(STATUS_PATH):
+            return
         try:
             tmp = STATUS_PATH + ".tmp"
             with open(tmp, "w") as f:
-                json.dump(kw, f)
+                f.write(body)
             os.replace(tmp, STATUS_PATH)
+            _status_written["body"] = body
         except OSError:
             pass
 
@@ -318,23 +325,7 @@ def reachable(serial):
         cfg = cam.load_config()
         port = cfg.get("devices", {}).get(serial, {}).get("tcpip_port") \
             or cfg.get("defaults", {}).get("tcpip_port", 5555)
-        target = "%s:%s" % (ip, port)
-        try:
-            cam.adb_server("host:connect:" + target, timeout=2)
-            # healthy wifi adb answers in <<1s; a 2s cap means a dropped link is
-            # noticed in ~2s instead of hanging on the dead socket.
-            v = cam.adb_server("shell:true", transport=target, timeout=2)[0]
-        except Exception:
-            v = False
-        if not v:
-            # adb leaves a Wi-Fi transport in "device" state even after the phone's
-            # Wi-Fi drops — a dead socket it won't re-establish, so a later `connect`
-            # just says "already connected" and we can never reconnect. Drop it here so
-            # the next probe does a FRESH connect (which works once Wi-Fi is back).
-            try:
-                cam.adb_server("host:disconnect:" + target, timeout=4)
-            except Exception:
-                pass
+        v = cam.wifi_reachable("%s:%s" % (ip, port))
     # stamp AFTER the probe so the 5s gap holds even when the probe itself is slow
     # (an offline phone burns ~8s on timeouts); otherwise it would retry back-to-back
     c.update(serial=serial, t=time.time(), v=v)
@@ -765,9 +756,11 @@ class PinnedMirror:
     def poll_lock(self):
         if lock_pending():                       # a just-pressed button owns the state
             return
+        if not self._alive() or not self.link:
+            return
         win = pick_winner(read_claims())
         managed = widget_unlocked(self.serial)
-        if (not win or bool(win.get("min", False)) or not self._alive()) and not managed:
+        if (not win or bool(win.get("min", False))) and not managed:
             return
         target = self.target or adb_target(self.serial)
         if is_locked(target):

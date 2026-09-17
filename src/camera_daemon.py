@@ -35,6 +35,7 @@ PREVIEW_TTL = 4.0          # a preview heartbeat counts as "wants frames" for th
 SETTINGS_DEBOUNCE = 0.5    # wait this long after the last settings change before rebuilding
 PROBE_TTL = 30.0           # honour a probe request newer than this
 SIZE_PROBE_RETRY = 30.0
+STATUS_REFRESH = 30.0
 # A v4l2 consumer's device handle is often held by a short-lived child/thread
 # that flickers in and out of `fuser`/`lsof` while streaming. Keep the feed up
 # for this long after the last sighting so a single missed poll doesn't tear it
@@ -68,6 +69,9 @@ class CameraDaemon:
         self.last_pin_try = 0.0      # rate-limit set-caps attempts
         self.last_consumer_seen = 0.0  # last time a consumer was detected
         self.consumer_watch = cam.ConsumerWatch()
+        self.reachability = cam.ReachabilityProbe()
+        self._status_body = ""
+        self._status_written = 0.0
         self.error = ""
         self.config_mtime = 0.0
         self.config = {}
@@ -288,11 +292,17 @@ class CameraDaemon:
             "defaults": dict(self.config.get("defaults", {})),
             "caps": self.caps,
         }
+        body = json.dumps({k: v for k, v in status.items() if k != "ts"}, sort_keys=True)
+        now = time.monotonic()
+        if body == self._status_body and now - self._status_written < STATUS_REFRESH:
+            return
         try:
             tmp = cam.STATUS_PATH + ".tmp"
             with open(tmp, "w") as f:
                 json.dump(status, f)
             os.replace(tmp, cam.STATUS_PATH)
+            self._status_body = body
+            self._status_written = now
         except OSError as e:
             print("[status] write failed: %s" % e)
 
@@ -358,6 +368,8 @@ class CameraDaemon:
         usb_map = cam.usb_serials()
         serial = cam.pick_active_serial(settings, self.config, usb_map)
         target, transport = cam.resolve_target(serial, self.config, usb_map)
+        if transport == "wifi" and not self.reachability.reachable(target):
+            target, transport = None, ""
 
         self._maybe_probe_sizes(target)
         if self._probe_requested():
