@@ -337,7 +337,7 @@ PlasmoidItem {
               get: () => root.devVal("orientation", "portrait"), set: v => root.devSet("orientation", v) },
             { section: i18n("Mirror"), label: i18n("Extended launcher"), kind: "text", placeholder: i18n("launcher package (optional)"), keywords: "extended display home app",
               get: () => root.devVal("display_launcher", ""), set: v => root.devSet("display_launcher", root.quoted(v)) },
-            { section: i18n("Mirror"), label: i18n("Samsung DeX on external"), kind: "toggle", hint: i18n("Start DeX on the extended display"), keywords: "dex desktop samsung",
+            { section: i18n("Mirror"), label: i18n("Samsung DeX on external"), kind: "toggle", hint: i18n("Extended display mode starts DeX on Samsung phones"), keywords: "dex desktop samsung",
               get: () => root.devVal("dex_desktop_mode", false) === true, set: v => root.devSet("dex_desktop_mode", root.onOff(v)) },
             { section: i18n("Mirror"), label: i18n("Mirror scrcpy args"), kind: "text", placeholder: i18n("e.g. --turn-screen-off"), keywords: "scrcpy arguments flags options",
               get: () => (root.devVal("scrcpy_args", []) || []).join(" "), set: v => root.devSet("scrcpy_args", root.quoted(v)) },

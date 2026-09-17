@@ -200,6 +200,12 @@ def apply_widget_rotation_lock(serial, target):
         _write_serial_marker(ROTATION_LOCKED_PATH, serial)
 
 
+def dex_requested(serial):
+    cfg = _effective_device_config(serial)
+    mode = str(cfg.get("mode", "clone") or "clone").lower()
+    return mode in ("extended", "display", "dex") and cfg.get("dex_desktop_mode") is True
+
+
 def release_widget_rotation_lock(target=""):
     serial = _read_serial_marker(ROTATION_LOCKED_PATH)
     if not serial:
@@ -514,10 +520,24 @@ class PinnedMirror:
         self.borderless = True
         self.extra = []
         self.link = ""
+        self.dex_support = {}
         subprocess.run(["pkill", "-f", TITLE_TOKEN], capture_output=True)
 
     def _alive(self):
         return self.proc is not None and self.proc.poll() is None
+
+    def _dex_blocked(self, serial):
+        if not dex_requested(serial):
+            return False
+        if serial not in self.dex_support:
+            supported = sl.dex_supported(adb_target(serial))
+            if supported is None:
+                return True
+            self.dex_support[serial] = supported
+            if not supported:
+                print("[phonescreen] Samsung DeX is on for %s but the phone doesn't support it" % serial)
+                sl.notify("Samsung DeX isn't available", "This phone doesn't support DeX. Turn off \"Samsung DeX on external\" in Phone Manager settings.", "dialog-error", "critical")
+        return not self.dex_support[serial]
 
     def switch_transport(self):
         p = self.proc
@@ -657,7 +677,7 @@ class PinnedMirror:
             if serial and reachable(serial):
                 if not self._alive() and not external_mirror():
                     now = time.time()
-                    if now >= self.next_launch:
+                    if now >= self.next_launch and not self._dex_blocked(serial):
                         self.next_launch = now + 2.0
                         self.target = adb_target(serial)
                         set_minimized(True)
@@ -690,6 +710,11 @@ class PinnedMirror:
         if not serial or not reachable(serial):
             self._stop()
             self._status(visible=True, status="offline", running=False, locked=False, serial=serial, owner=owner)
+            return
+
+        if not self._alive() and self._dex_blocked(serial):
+            status = "dex-unsupported" if self.dex_support.get(serial) is False else "connecting"
+            self._status(visible=True, status=status, running=False, locked=False, serial=serial, owner=owner)
             return
 
         if not self._alive():

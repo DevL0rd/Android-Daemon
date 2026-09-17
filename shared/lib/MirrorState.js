@@ -9,6 +9,8 @@ function describe(state) {
         return { key: "external", icon: "window", text: i18n("In another window"), detail: i18n("Close the pop-out window to bring it back"), tone: "accent", busy: false }
     if (state.status === "fullscreen")
         return { key: "fullscreen", icon: "view-fullscreen", text: i18n("Fullscreen"), detail: i18n("Leave fullscreen to bring it back"), tone: "accent", busy: false }
+    if (state.status === "dex-unsupported")
+        return { key: "dex", icon: "dialog-error", text: i18n("DeX isn't available"), detail: i18n("Turn off Samsung DeX on external in settings"), tone: "negative", busy: false }
     if (state.status === "offline" || !state.reachable)
         return { key: "offline", icon: "network-disconnect", text: i18n("Phone offline"), detail: i18n("Plug in USB or connect over Wi-Fi"), tone: "negative", busy: false }
     if (state.locked)

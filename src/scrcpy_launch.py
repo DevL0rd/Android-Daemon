@@ -155,6 +155,36 @@ def lock_rotation(target, orientation):
         print(f"[rotation] lock failed: {e}")
         return False
 
+DEX_SETTING = "force_desktop_mode_on_external_displays"
+DEX_PACKAGE = "com.sec.android.desktopmode.uiservice"
+
+def notify(title, message, icon="smartphone", urgency="normal"):
+    try:
+        subprocess.run(["notify-send", "-a", "Linux-Android-Daemon", "-i", icon, "-u", urgency, title, message])
+    except OSError as e:
+        print(f"[notify] failed: {e}")
+
+def dex_supported(target):
+    maker = adb(target, "shell", "getprop", "ro.product.manufacturer").stdout.strip().lower()
+    if not maker:
+        return None
+    if "samsung" not in maker:
+        return False
+    return adb(target, "shell", "pm", "path", DEX_PACKAGE).stdout.strip().startswith("package:")
+
+def enable_dex(target):
+    previous = adb(target, "shell", "settings", "get", "global", DEX_SETTING).stdout.strip()
+    adb(target, "shell", "settings", "put", "global", DEX_SETTING, "1")
+    print(f"[dex] desktop mode on for the extended display (was {previous or 'unset'})")
+    return previous
+
+def restore_dex(target, previous):
+    if previous in ("", "null"):
+        adb(target, "shell", "settings", "delete", "global", DEX_SETTING)
+    else:
+        adb(target, "shell", "settings", "put", "global", DEX_SETTING, previous)
+    print("[dex] desktop mode setting restored")
+
 def restore_rotation(target):
     """Always re-enable auto-rotate (unlock) when the mirror closes. We don't try
     to remember the previous state — closing simply returns the phone to
@@ -237,6 +267,17 @@ def main():
         scrcpy_args.append("--stay-awake")
 
     locked = False
+    dex_previous = None
+    if display_mode and cfg.get("dex_desktop_mode") is True:
+        supported = dex_supported(target)
+        if supported is None:
+            print("[dex] couldn't read the phone's manufacturer over adb")
+            return 1
+        if not supported:
+            print("[dex] this phone doesn't support Samsung DeX; turn off dex_desktop_mode")
+            notify("Samsung DeX isn't available", "This phone doesn't support DeX. Turn off \"Samsung DeX on external\" in Phone Manager settings.", "dialog-error", "critical")
+            return 1
+        dex_previous = enable_dex(target)
     if display_mode:
         # Extended-display mode: spin up a new virtual display the size of the
         # phone screen and live-resize it to the window. With no launcher
@@ -265,7 +306,7 @@ def main():
         scrcpy_cmd = ["stdbuf", "-oL"] + scrcpy_cmd
     print(f"[scrcpy] exec: {' '.join(scrcpy_cmd)}", flush=True)
 
-    if not locked:
+    if not locked and dex_previous is None:
         os.execvp(scrcpy_cmd[0], scrcpy_cmd)  # nothing to restore → BECOME scrcpy
 
     # Rotation is locked, so we must outlive scrcpy to restore it afterwards — which makes
@@ -284,7 +325,10 @@ def main():
     try:
         proc.wait()
     finally:
-        restore_rotation(target)
+        if locked:
+            restore_rotation(target)
+        if dex_previous is not None:
+            restore_dex(target, dex_previous)
     return 0
 
 if __name__ == "__main__":

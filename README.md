@@ -224,7 +224,7 @@ Turn on **USB tether failover** for a phone and your PC stays online through it.
     </td>
     <td valign="top">
       <h4>🖥️ Extended display</h4>
-      Give the phone a second screen of its own instead of mirroring the one in your hand.
+      Give the phone a second screen of its own instead of mirroring the one in your hand. Samsung phones can open DeX there if you turn on <b>Samsung DeX on external</b>; it's off by default.
     </td>
   </tr>
   <tr>
@@ -310,6 +310,7 @@ Every setting from the Settings tab is saved in `config.json` in the repository 
 | `stay_awake` | `false` | Keep the phone awake while it's plugged in |
 | `mode` | `"clone"` | `"clone"` mirrors the screen, `"extended"` gives the phone a second display |
 | `display_launcher` | `""` | An app to start on the extended display |
+| `dex_desktop_mode` | `false` | Start Samsung DeX on the extended display. The phone's desktop mode setting is switched on while the mirror runs and put back when it closes |
 | `orientation` | `"portrait"` | Hold the phone in `"portrait"` or `"landscape"` while mirrored, or `"auto"` |
 | `scrcpy_args` | `[]` | Extra scrcpy options, added on top of the ones in `defaults` |
 | `tether_failover` | `false` | Share the phone's connection over USB when your network drops |

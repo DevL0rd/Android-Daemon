@@ -19,6 +19,7 @@ DEFAULTS = {
     "display_launcher": "",
     "orientation": "portrait",
     "mode": "clone",
+    "dex_desktop_mode": False,
     "kdeconnect_notify": False
 }
 

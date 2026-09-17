@@ -15,6 +15,7 @@
         "display_launcher": "",
         "orientation": "portrait",
         "mode": "clone",
+        "dex_desktop_mode": false,
         "kdeconnect_notify": false
     },
     "devices": {},
