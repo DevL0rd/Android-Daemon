@@ -121,10 +121,28 @@ fi
 echo "Setting up systemd user service..."
 mkdir -p ~/.config/systemd/user
 
+cat <<EOF > ~/.config/systemd/user/linux-android-adb.service
+[Unit]
+Description=Android-Daemon adb server
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/bin/adb -L tcp:5037 kill-server
+ExecStart=/usr/bin/adb -L tcp:5037 server nodaemon
+ExecStop=/usr/bin/adb -L tcp:5037 kill-server
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target
+EOF
+
 cat <<EOF > ~/.config/systemd/user/linux-android-daemon.service
 [Unit]
 Description=Android-Daemon (wireless ADB + scrcpy + USB tethering failover)
-After=graphical-session.target
+Wants=linux-android-adb.service
+After=graphical-session.target linux-android-adb.service
 
 [Service]
 Type=simple
@@ -140,6 +158,7 @@ WantedBy=default.target
 EOF
 
 systemctl --user daemon-reload
+systemctl --user enable --now linux-android-adb.service
 systemctl --user enable --now linux-android-daemon.service
 
 # ===========================================================================
@@ -175,7 +194,8 @@ configure_plasma_local_file_access
 cat <<EOF > ~/.config/systemd/user/linux-phonecam.service
 [Unit]
 Description=Android-Daemon phone webcam (on-demand camera feed)
-After=graphical-session.target
+Wants=linux-android-adb.service
+After=graphical-session.target linux-android-adb.service
 
 [Service]
 Type=simple

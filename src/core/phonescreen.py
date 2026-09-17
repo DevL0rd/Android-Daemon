@@ -1,23 +1,3 @@
-"""Phone Screen — the shared, daemon-owned scrcpy mirror.
-
-There is ONE pinned scrcpy mirror. Any number of widgets (the desktop Phone Screen
-widget, the tray Phone Manager popup, ...) can ask for it by writing a *claim*; the
-daemon arbitrates by priority and points the single mirror at the winner — moving
-its window (KWin rule) without relaunching scrcpy. When the top claim goes away the
-mirror falls back to the next claim (e.g. popup closes -> desktop widget takes it);
-when NO claim is left it locks the phone and kills scrcpy after a grace period.
-
-  • PinnedMirror — a state machine the MAIN daemon ticks once a second. Owns the
-    scrcpy lifecycle (launch, keep alive, follow USB<->WiFi), the window geometry
-    (KWin rule), lock-tracking (hide while locked), and pause for an external mirror
-    or a fullscreen app.
-  • module helpers (KWin rule, lock/reachability, screen-off) are shared with the
-    thin `phonescreenctl` client so there is ONE implementation.
-
-Files in $XDG_RUNTIME_DIR/Linux-Android-Daemon:
-    phonescreen_claim_<name>.json   widget -> daemon : a claim (heartbeated)
-    phonescreen.json                daemon -> widget : {visible, status, running, locked}
-"""
 import os
 import re
 import glob
@@ -28,6 +8,7 @@ import threading
 import subprocess
 
 from core import camera as cam
+from core import reachability
 import scrcpy_launch as sl
 
 TITLE_TOKEN = "PhoneScreenPinned"
@@ -40,14 +21,11 @@ WINDOW_PATH = os.path.join(RUNTIME_DIR, "phonescreen_window")
 LOG_PATH = os.path.join(RUNTIME_DIR, "phonescreen.log")
 LAUNCHER = os.path.join(cam.REPO_DIR, "src", "scrcpy_launch.py")
 
-CLAIM_TTL = 5.0        # a claim is "live" only if heartbeated within this window
+CLAIM_TTL = 5.0
 WINDOW_GRACE = 20.0
 
-# scrcpy logs its source capture size as "INFO: Texture: WxH" — that is the true
-# mirrored resolution (and aspect), and it is re-logged when the phone rotates/unfolds.
 _TEXTURE_RE = re.compile(r"Texture:\s*(\d+)\s*x\s*(\d+)")
 
-# the status file is written from the tick loop AND the scrcpy output reader thread
 _status_lock = threading.Lock()
 
 
@@ -59,9 +37,6 @@ def _claim_path(name):
     return os.path.join(RUNTIME_DIR, "phonescreen_claim_%s.json" % name)
 
 
-# --------------------------------------------------------------------------- #
-# claims (widget -> daemon) and status (daemon -> widget)
-# --------------------------------------------------------------------------- #
 def write_claim(name, **data):
     _runtime()
     try:
@@ -79,7 +54,6 @@ def remove_claim(name):
 
 
 def read_claims():
-    """All live claims (heartbeated within CLAIM_TTL), each with its name."""
     out = []
     now = time.time()
     for path in glob.glob(CLAIM_GLOB):
@@ -129,9 +103,6 @@ def read_status():
         return {}
 
 
-# --------------------------------------------------------------------------- #
-# grace markers
-# --------------------------------------------------------------------------- #
 def touch(path):
     _runtime()
     try:
@@ -147,9 +118,6 @@ def _fresh(path, ttl):
         return False
 
 
-# Instant "phone is locked" marker — set by lock/unlock the moment they're pressed
-# (and kept honest by the daemon's lock poll), so the mirror hides/shows instantly
-# instead of waiting for the next ~2s poll.
 LOCKED_PATH = os.path.join(RUNTIME_DIR, "phonescreen_locked")
 
 
@@ -171,10 +139,6 @@ def get_locked():
     return os.path.exists(LOCKED_PATH)
 
 
-# After a lock/unlock BUTTON press the phone takes a moment to actually change
-# state. The daemon's lock poll must not override the just-set state during that
-# window, or the mirror flickers hide->show->hide. The button marks this; the poll
-# defers while it's fresh.
 LOCK_PENDING_PATH = os.path.join(RUNTIME_DIR, "phonescreen_lockpending")
 LOCK_PENDING_TTL = 5.0
 
@@ -250,10 +214,6 @@ def phone_locked(target=""):
     set_locked(True)
 
 
-# A widget-initiated unlock requests a one-shot screen-off once the mirror shows, so we
-# blank the panel ONLY when WE unlocked — a manual hand-unlock (seen only by the lock
-# poll) must not blank it. Consumed on the next un-minimize; TTL'd so a stale request
-# can't fire much later.
 BLANK_REQ_PATH = os.path.join(RUNTIME_DIR, "phonescreen_blankreq")
 BLANK_REQ_TTL = 8.0
 
@@ -271,9 +231,6 @@ def take_blank_request():
     return fresh
 
 
-# --------------------------------------------------------------------------- #
-# serial / reachability / lock
-# --------------------------------------------------------------------------- #
 def resolve_serial(serial=""):
     if serial and serial != "auto":
         return serial
@@ -303,33 +260,18 @@ def last_ip(serial):
     return d.get("last_ip", "") or cfg.get("defaults", {}).get("last_ip", "")
 
 
-_reach_cache = {"serial": "", "t": 0.0, "v": False}
-
-
 def reachable(serial):
-    """Is the phone ACTUALLY reachable right now (not just 'we have a saved IP')?
-    USB present, or a Wi-Fi adb connection that answers `shell true`. This is what
-    lets a dropped Wi-Fi / phone-wifi-off get noticed (so the frozen mirror is torn
-    down and the status goes offline) instead of looking forever-connected. ~3s cache."""
     if not serial:
         return False
     if usb_present(serial):
         return True
-    now = time.time()
-    c = _reach_cache
-    if serial == c["serial"] and now - c["t"] < 2.0:
-        return c["v"]
-    v = False
     ip = last_ip(serial)
-    if ip:
-        cfg = cam.load_config()
-        port = cfg.get("devices", {}).get(serial, {}).get("tcpip_port") \
-            or cfg.get("defaults", {}).get("tcpip_port", 5555)
-        v = cam.wifi_reachable("%s:%s" % (ip, port))
-    # stamp AFTER the probe so the 5s gap holds even when the probe itself is slow
-    # (an offline phone burns ~8s on timeouts); otherwise it would retry back-to-back
-    c.update(serial=serial, t=time.time(), v=v)
-    return v
+    if not ip:
+        return False
+    cfg = cam.load_config()
+    port = cfg.get("devices", {}).get(serial, {}).get("tcpip_port") \
+        or cfg.get("defaults", {}).get("tcpip_port", 5555)
+    return reachability.watcher().reachable("%s:%s" % (ip, port))
 
 
 def adb_target(serial):
@@ -359,7 +301,7 @@ def lock_phone(target):
     if not target:
         return
     try:
-        sl.adb(target, "shell", "input", "keyevent", "223")   # KEYCODE_SLEEP
+        sl.adb(target, "shell", "input", "keyevent", "223")
     except Exception:
         pass
     phone_locked(target)
@@ -382,8 +324,6 @@ def unlock_phone(serial, target):
 
 
 def screen_off_enabled(serial):
-    """Should we blank the phone's physical screen (scrcpy MOD+O) while viewing the
-    mirror? Per-device 'screen_off' setting, default on."""
     cfg = cam.load_config()
     dev = cfg.get("devices", {}).get(serial, {})
     if "screen_off" in dev:
@@ -391,9 +331,6 @@ def screen_off_enabled(serial):
     return bool(cfg.get("defaults", {}).get("screen_off", True))
 
 
-# --------------------------------------------------------------------------- #
-# scrcpy process introspection
-# --------------------------------------------------------------------------- #
 def _scrcpy_pids():
     try:
         out = subprocess.run(["pgrep", "-x", "scrcpy"], capture_output=True, text=True).stdout
@@ -422,9 +359,6 @@ def external_mirror():
     return _fresh(WINDOW_PATH, WINDOW_GRACE)
 
 
-# --------------------------------------------------------------------------- #
-# fullscreen app -> pause to save resources
-# --------------------------------------------------------------------------- #
 _fs_cache = {"t": 0.0, "v": False}
 
 
@@ -448,9 +382,6 @@ def fullscreen_active():
     return v
 
 
-# --------------------------------------------------------------------------- #
-# KWin rule
-# --------------------------------------------------------------------------- #
 def _kwrite(key, value):
     subprocess.run(["kwriteconfig6", "--file", "kwinrulesrc",
                     "--group", KWIN_RULE_ID, "--key", key, str(value)], capture_output=True)
@@ -484,9 +415,7 @@ def _ensure_rule_listed():
     _kwrite_general("count", str(len(ids)))
 
 
-# KWin rule enum: 2 = Force, match enum: 2 = SubstringMatch
 def apply_window(x, y, w, h, above=False, borderless=True, minimized=False):
-    """Position/size/stack/hide the pinned mirror window in one go (one reconfigure)."""
     _kwrite("Description", "Phone Screen (pinned by org.devl0rd.phonescreen)")
     _kwrite("title", TITLE_TOKEN)
     _kwrite("titlematch", 2)
@@ -514,7 +443,6 @@ def apply_window(x, y, w, h, above=False, borderless=True, minimized=False):
 
 
 def set_minimized(flag):
-    """Just flip the minimize rule (used for instant lock/unlock hide-show)."""
     _kwrite("minimize", "true" if flag else "false")
     _kwrite("minimizerule", 2)
     kwin_reconfigure()
@@ -553,9 +481,6 @@ def clear_rule():
     kwin_reconfigure()
 
 
-# --------------------------------------------------------------------------- #
-# screen-off after unlock (kdotool focus + scrcpy MOD+o via ydotool)
-# --------------------------------------------------------------------------- #
 def screen_off_via_scrcpy():
     if not (shutil.which("ydotool") and shutil.which("kdotool")):
         return False
@@ -564,30 +489,13 @@ def screen_off_via_scrcpy():
                        capture_output=True, timeout=6)
         time.sleep(0.25)
         subprocess.run(["ydotool", "key", "125:1", "24:1", "24:0", "125:0"],
-                       capture_output=True, timeout=6)   # Meta(Super) + O
+                       capture_output=True, timeout=6)
         return True
     except (OSError, subprocess.TimeoutExpired):
         return False
 
 
-# --------------------------------------------------------------------------- #
-# the daemon-owned mirror manager
-# --------------------------------------------------------------------------- #
 class PinnedMirror:
-    """The daemon's single mirror, driven at two cadences so reactions feel instant:
-
-      • reconcile() — fast (~150 ms, no adb): point the window at the winning claim
-        (move / hide) the moment a claim changes, so opening/closing the popup or
-        switching tabs reacts instantly.
-      • tick() — slow (~1 s): the scrcpy lifecycle (launch, keep-alive, USB<->WiFi)
-        and the status snapshot.
-      • poll_lock() — fast (~0.5 s): physical lock/unlock detection while shown.
-
-    Lifecycle: once launched, scrcpy is kept ALIVE (it is never grace-killed). With
-    no claim it is held MINIMIZED and the phone is locked, so re-opening is instant
-    and it can follow USB<->WiFi while hidden. It only dies if the link drops (and is
-    relaunched, minimized, when the phone is reachable again).
-    """
 
     def __init__(self):
         self.proc = None
@@ -596,59 +504,39 @@ class PinnedMirror:
         self.started = 0.0
         self.connected = False
         self.next_launch = 0.0
-        self.applied = None          # last (x,y,w,h,above,borderless,min) pushed to KWin
+        self.applied = None
         self.no_claim_since = 0.0
-        self.size_wh = (9, 19)       # mirrored display w,h, read live from scrcpy's output
-                                     # ("Texture: WxH"); the popup sizes its area to this
+        self.size_wh = (9, 19)
         self._last_status = {"visible": False, "status": "off", "running": False,
-                             "locked": False, "owner": ""}  # for off-tick size republish
-        self.persist = False         # once True we keep scrcpy ALIVE (minimized when
-                                     # there's no claim) — never killed, so re-opening
-                                     # is instant and it can follow USB<->WiFi hidden
-        self.last_geom = None        # last (x,y,w,h,above,borderless) from a claim
-        self.borderless = True       # remembered launch flags for hidden relaunches
+                             "locked": False, "owner": ""}
+        self.persist = False
+        self.last_geom = None
+        self.borderless = True
         self.extra = []
-        self.link = ""               # ACTUAL current connection: "usb" | "wifi" | ""
-        # We OWN the mirror (self.proc) and read its output stream, so we can't adopt an
-        # orphan from a prior daemon (no pipe to it). Clear any such orphan at startup so
-        # self.proc is the single source of truth — no pgrep needed to track our own child.
+        self.link = ""
         subprocess.run(["pkill", "-f", TITLE_TOKEN], capture_output=True)
 
     def _alive(self):
-        """Is OUR scrcpy mirror running? We launched it, so just ask the handle —
-        no process scan. self.proc is scrcpy directly (the launcher exec's into it)."""
         return self.proc is not None and self.proc.poll() is None
 
     def switch_transport(self):
-        """Called from the daemon's USB plug/unplug thread: drop the mirror NOW so the
-        next tick relaunches it on whatever transport is now best (USB appeared, or USB
-        vanished -> WiFi). Instant in BOTH directions — without this, an unplug just waits
-        for scrcpy to notice the dead USB link and exit on its own (several seconds). We
-        own the process, so we terminate the handle (no pkill); tick sees it dead and
-        relaunches. Reading proc into a local + an atomic float write keep it thread-safe."""
         p = self.proc
         if p:
             try:
                 p.terminate()
             except OSError:
                 pass
-        self.next_launch = 0.0   # don't let the relaunch throttle delay the swap
+        self.next_launch = 0.0
 
     def wants(self, serial):
         win = pick_winner(read_claims())
         if win:
             return (win.get("serial") or resolve_serial()) == serial
-        # No claim, but a persisting (minimized) mirror still follows this phone, so
-        # plug/unplug should still nudge it onto the faster transport.
         return self.persist and bool(self.serial) and self.serial == serial
 
-    # ---- fast: window placement from the winning claim (no adb) ----------
     def reconcile(self):
         win = pick_winner(read_claims())
         if win is None:
-            # No claim: if we're keeping the mirror alive, hold it MINIMIZED at the
-            # last known geometry (so any relaunch opens minimized too). Cached via
-            # self.applied, so this is a one-shot, not a per-tick reconfigure.
             if not self.persist or self.last_geom is None:
                 return
             x, y, w, h, above, borderless = self.last_geom
@@ -667,21 +555,15 @@ class PinnedMirror:
             prev_min = self.applied[6] if self.applied else True
             self.applied = desired
             apply_window(x, y, w, h, above=above, borderless=borderless, minimized=want_min)
-            # mirror just became visible AND a widget unlock asked for it -> blank the
-            # phone's physical screen via scrcpy's MOD+O (when enabled). take_blank_request
-            # is consumed on every un-minimize so a manual hand-unlock never blanks.
             if prev_min and not want_min and take_blank_request() and screen_off_enabled(self.serial):
                 threading.Thread(target=self._screen_off_soon, daemon=True).start()
 
     def _screen_off_soon(self):
-        # let KWin un-minimize + map the window before we focus it, then blank the panel
         time.sleep(0.4)
         if self._alive():
             screen_off_via_scrcpy()
 
-    # ---- slow: scrcpy lifecycle -----------------------------------------
     def _stop(self):
-        # We own it — terminate the handle; no pkill/pgrep dance.
         if self.proc:
             try:
                 self.proc.terminate()
@@ -692,13 +574,6 @@ class PinnedMirror:
         self.applied = None
 
     def _launch(self, serial, borderless, extra):
-        # --no-unlock: the pinned mirror just CONNECTS; it never wakes/PIN-unlocks the
-        # phone (so a hidden reconnect on plug/unplug stays locked). The widgets unlock
-        # explicitly only when they actually show the phone.
-        # --no-power-on: connecting must NOT light up the phone's physical screen. Without
-        # it, scrcpy's default powers the panel on at every (re)connect — so a USB plug-in
-        # left the locked phone sitting lit on the lock screen. "Show" still wakes the panel
-        # itself (phonescreenctl unlock sends KEYCODE_WAKEUP), so this only stops idle wakes.
         flags = ["--no-unlock", "--no-rotation-lock", "--no-power-on",
                  "--window-title", TITLE_TOKEN, "--no-audio", "--no-window-aspect-ratio-lock"]
         if borderless:
@@ -706,8 +581,6 @@ class PinnedMirror:
         flags += extra
         try:
             _runtime()
-            # -u + a piped stream: we read scrcpy's output LIVE (see _read_output) instead
-            # of polling its log on disk, so a size change reaches us the instant it prints.
             proc = subprocess.Popen(["python3", "-u", LAUNCHER, "--auto", serial] + flags,
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                     text=True, bufsize=1)
@@ -718,10 +591,6 @@ class PinnedMirror:
         return proc
 
     def _read_output(self, proc):
-        # Own scrcpy's output stream: tee it to the log for debugging AND fire an immediate
-        # resize the moment scrcpy reports a new texture (rotation / unfolding the foldable).
-        # The texture is the SOURCE capture size — the true aspect, independent of the window
-        # size we force — so the popup can size its area to it and the mirror fills it exactly.
         try:
             with open(LOG_PATH, "a") as log:
                 for line in proc.stdout:
@@ -733,18 +602,12 @@ class PinnedMirror:
                     wh = (int(m.group(1)), int(m.group(2)))
                     if wh != self.size_wh and wh[0] > 0 and wh[1] > 0:
                         self.size_wh = wh
-                        # On rotation scrcpy resizes its OWN window to the new orientation;
-                        # force the next reconcile to re-assert the KWin geometry rule so it
-                        # snaps back into the claim rect (the desktop widget's claim doesn't
-                        # change, so reconcile would otherwise dedupe and never re-pin it).
                         self.applied = None
                         self._publish_size()
         except Exception:
             pass
 
     def _publish_size(self):
-        # Re-emit the current status carrying the new size the instant scrcpy reports it,
-        # so the widgets reshape immediately instead of waiting for the next tick.
         w, h = self.size_wh
         write_status(width=w, height=h, link=self.link, **self._last_status)
 
@@ -754,7 +617,7 @@ class PinnedMirror:
         write_status(width=w, height=h, link=self.link, **kw)
 
     def poll_lock(self):
-        if lock_pending():                       # a just-pressed button owns the state
+        if lock_pending():
             return
         if not self._alive() or not self.link:
             return
@@ -773,9 +636,6 @@ class PinnedMirror:
     def tick(self):
         win = pick_winner(read_claims())
 
-        # Refresh the REAL connection link for the status badge every tick (cheap: a
-        # usb check + the cached wifi reachability probe). This is the truth — present
-        # USB transport, or a wifi adb that actually answers — never "we have an IP".
         ls = (win.get("serial") if win else self.serial) or resolve_serial()
         if ls and usb_present(ls):
             self.link = "usb"
@@ -784,21 +644,16 @@ class PinnedMirror:
         else:
             self.link = ""
 
-        # ---------- no claim: keep the mirror ALIVE but minimized (never kill) -----
         if win is None:
             if not self.persist:
                 self._status(visible=False, status="off", running=False,
                              locked=get_locked(), owner="")
                 return
-            if not self.no_claim_since:               # the last claim just dropped
+            if not self.no_claim_since:
                 self.no_claim_since = time.time()
                 lock_phone(self.target or adb_target(self.serial))
             serial = self.serial or resolve_serial()
             self.serial = serial
-            # Follow USB<->WiFi while hidden: if the mirror died (cable pulled) and the
-            # phone is reachable, relaunch it ALREADY minimized (the rule's minimize is
-            # in force) so it never flashes; if it's frozen on a dead link, drop it so
-            # the next reachable tick can bring it back.
             if serial and reachable(serial):
                 if not self._alive() and not external_mirror():
                     now = time.time()
@@ -810,7 +665,7 @@ class PinnedMirror:
                         self.started = now
                         self.applied = None
             elif self._alive():
-                self._stop()                          # frozen on a dead link -> drop it
+                self._stop()
             self._status(visible=False, status="minimized", running=self._alive(),
                          locked=get_locked(), owner="", serial=serial)
             return
@@ -853,14 +708,13 @@ class PinnedMirror:
             self.proc = self._launch(serial, borderless, extra)
             self.started = now
             self.connected = False
-            self.persist = True          # from now on, keep it alive (never grace-kill)
-            self.applied = None          # force reconcile to position the new window
+            self.persist = True
+            self.applied = None
             self._status(visible=True, status="connecting", running=False, locked=get_locked(), serial=serial, owner=owner)
             return
 
         if not self.connected and time.time() - self.started > 3.0:
             self.connected = True
 
-        # (physical lock/unlock detection lives in poll_lock(), run far more often)
         self._status(visible=True, status="connected" if self.connected else "connecting",
                      running=self.connected, locked=get_locked(), serial=serial, owner=owner)

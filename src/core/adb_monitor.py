@@ -6,33 +6,19 @@ import subprocess
 
 
 class AdbMonitor:
-    """Watches adb's device event stream and fires callbacks when a phone is
-    plugged in or unplugged over USB.
-
-    PUSH-based: we hold open one `host:track-devices-l` request to the adb
-    server, which streams a fresh device list the instant anything changes — so
-    plug-in AND unplug are reacted to immediately, no polling and no grace.
-
-    The stream reader and the callbacks run on SEPARATE threads: the reader only
-    reads the socket (so it stays responsive and re-subscribes the instant the
-    server closes/crashes), while a worker drains a queue and runs on_connect/
-    on_disconnect. That way a slow callback (e.g. an adb call stalling because the
-    server just crashed) can never freeze the reader and stall detection.
-    """
 
     ADB_HOST = ("127.0.0.1", 5037)
 
     def __init__(self, on_connect, on_disconnect):
         self.on_connect = on_connect
         self.on_disconnect = on_disconnect
-        self.active = {}       # serial -> model, for which we've fired on_connect
+        self.active = {}
         self.events = queue.Queue()
 
     def start(self):
         threading.Thread(target=self._reader, daemon=True).start()
         threading.Thread(target=self._worker, daemon=True).start()
 
-    # ---- worker: runs the callbacks, off the reader thread -----------------
 
     def _worker(self):
         while True:
@@ -45,10 +31,10 @@ class AdbMonitor:
             except Exception:
                 pass
 
-    # ---- reader: only ever reads the stream --------------------------------
 
     def _open_stream(self):
         s = socket.create_connection(self.ADB_HOST, timeout=10)
+        s.settimeout(None)
         cmd = "host:track-devices-l"
         s.sendall(("%04x%s" % (len(cmd), cmd)).encode())
         if s.recv(4) != b"OKAY":
@@ -62,7 +48,7 @@ class AdbMonitor:
         while len(buf) < n:
             chunk = s.recv(n - len(buf))
             if not chunk:
-                return None        # EOF before n bytes -> stream closed
+                return None
             buf += chunk
         return buf
 
@@ -72,7 +58,7 @@ class AdbMonitor:
             return None
         n = int(hdr, 16)
         if n == 0:
-            return ""               # empty device list
+            return ""
         data = self._recvall(s, n)
         return None if data is None else data.decode()
 
@@ -80,13 +66,12 @@ class AdbMonitor:
         while True:
             s = None
             try:
-                # ensure a server exists to subscribe to (no-op if already up)
                 subprocess.run(["adb", "start-server"], capture_output=True, timeout=10)
                 s = self._open_stream()
                 while True:
                     msg = self._read_msg(s)
                     if msg is None:
-                        break        # server restarted/closed -> re-subscribe
+                        break
                     self._diff(self._parse(msg))
             except FileNotFoundError:
                 print("[AdbMonitor] 'adb' not found in PATH.")
@@ -99,15 +84,11 @@ class AdbMonitor:
                         s.close()
                     except OSError:
                         pass
-            time.sleep(1)            # server gone/restarting -> retry the stream
+            time.sleep(1)
 
-    # ---- parsing + diffing -------------------------------------------------
 
     @staticmethod
     def _parse(payload):
-        """{serial: model} for phones on a USB transport in 'device' state.
-        Only USB transports carry a 'usb:' descriptor, which skips the network
-        (ip:port) transports we may have already connected to."""
         devices = {}
         for line in payload.splitlines():
             line = line.strip()

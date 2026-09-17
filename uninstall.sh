@@ -16,6 +16,8 @@ systemctl --user daemon-reload
 echo "Stopping the phone-camera daemon..."
 systemctl --user disable --now linux-phonecam.service 2>/dev/null || true
 rm -f ~/.config/systemd/user/linux-phonecam.service
+systemctl --user disable --now linux-android-adb.service 2>/dev/null || true
+rm -f ~/.config/systemd/user/linux-android-adb.service
 systemctl --user daemon-reload 2>/dev/null || true
 
 echo "Stopping any pinned Phone Screen mirror + removing its KWin rule..."
