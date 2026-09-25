@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Check the shell scripts
+        run: |
+          scripts=(install.sh uninstall.sh packaging/lib.sh packaging/dependencies.sh packaging/system-update tests/install/*.sh)
+          for script in "${scripts[@]}"; do bash -n "$script"; done
+          shellcheck -x -S warning "${scripts[@]}"
+
+      - name: Compile the Python sources
+        run: PYTHONPYCACHEPREFIX="$RUNNER_TEMP/pycache" python3 -m py_compile src/*.py src/core/*.py bin/phonecamctl bin/phonescreenctl
+
+  distros:
+    name: Install dependencies on ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Arch Linux
+            image: archlinux:latest
+            plasma: pacman -Syu --noconfirm git plasma-desktop
+          - name: Fedora 44
+            image: fedora:44
+            plasma: dnf install -y git plasma-desktop
+          - name: openSUSE Tumbleweed
+            image: opensuse/tumbleweed
+            plasma: zypper --non-interactive dup --allow-downgrade && zypper --non-interactive install --force-resolution git plasma6-desktop
+          - name: Debian testing
+            image: debian:testing
+            plasma: apt-get update && apt-get install -y git plasma-desktop
+    container:
+      image: ${{ matrix.image }}
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Install Plasma
+        run: ${{ matrix.plasma }}
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Android-Daemon's dependencies
+        run: packaging/dependencies.sh
+
+      - name: Check the tools Android-Daemon runs
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          for tool in adb scrcpy ffmpeg v4l2-ctl fuser xprop notify-send gdbus ydotool ydotoold kpackagetool6 kwriteconfig6 kreadconfig6; do
+            command -v "$tool" || { echo "$tool is missing"; exit 1; }
+          done
+          python3 -c 'from gi.repository import Gio, GLib'
+          scrcpy --version
+          adb version
+          PYTHONPYCACHEPREFIX=/tmp/pycache python3 -m py_compile src/*.py src/core/*.py bin/phonecamctl bin/phonescreenctl
+
+  install:
+    name: Install, check and uninstall on Arch Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install, check and uninstall Android-Daemon in a Plasma session
+        run: tests/install/run.sh
