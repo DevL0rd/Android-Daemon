@@ -4,6 +4,7 @@ set -uo pipefail
 checkout="$1"
 config="${XDG_CONFIG_HOME:-$HOME/.config}/Linux-Android-Daemon/config.json"
 app="${XDG_DATA_HOME:-$HOME/.local/share}/linux-android-daemon/app"
+source="${XDG_DATA_HOME:-$HOME/.local/share}/linux-android-daemon/source"
 failed=0
 check() {
     if eval "$2" >/dev/null 2>&1; then
@@ -19,7 +20,8 @@ check "the old config.json moved to $config" "python3 -c 'import json, sys; asse
 check "the config is private" "[[ \$(stat -c %a $config) == 600 ]]"
 check "the daemons are installed in $app" "[[ -f $app/src/daemon.py && -f $app/src/camera_daemon.py && -x $app/bin/phonecamctl && -x $app/bin/phonescreenctl ]]"
 check "the updater is installed" "[[ -x /usr/lib/linux-android-daemon/install && -f /usr/lib/linux-android-daemon/lib.sh && -x /usr/lib/linux-android-daemon/system-update ]]"
-check "the update source is recorded" "[[ \$(head -n1 /var/lib/linux-android-daemon/source) == $checkout ]]"
+check "the update copy is recorded" "[[ \$(head -n1 /var/lib/linux-android-daemon/source) == $source ]]"
+check "the update copy is a clone of the repository" "git -C $source rev-parse --git-dir && [[ -e $source/shared/common/FileWatcher.qml ]]"
 references=$(grep -rsF "$checkout" "$HOME/.config/systemd/user" "$HOME/.config/environment.d" "$HOME/.local/bin" "$app" "$HOME/.local/share/plasma/plasmoids" /usr/lib/linux-android-daemon \
     | grep -v 'LINUX_ANDROID_DAEMON_SOURCE=')
 links=$(find "$HOME/.local/bin" -maxdepth 1 -type l -lname "$checkout/*")

@@ -271,7 +271,7 @@ done
 systemctl --user restart linux-android-daemon.service 2>/dev/null || true
 
 if $SYSTEM_UPDATE; then
-    [ -e "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/$UPDATE_UNIT" ] && install_update_unit "$SOURCE_DIR"
+    [ -e "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/$UPDATE_UNIT" ] && install_update_unit "$SOURCE_DIR" "$SOURCE_DIR"
     notify_updated "The phone daemon and its widgets are up to date. Restart Plasma or log out and back in to load the updated widgets."
     exit 0
 fi

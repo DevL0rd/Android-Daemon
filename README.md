@@ -49,7 +49,7 @@ cd Android-Daemon
 ./install.sh
 ```
 
-That's it. The installer grabs `adb`, `scrcpy`, `ffmpeg` and the virtual webcam driver, starts the background services and adds two Plasma widgets: **Phone Screen** for your desktop and **Phone Manager** for your system tray. Everything is installed into your home folder, so the cloned folder is only used to pull updates.
+That's it. The installer grabs `adb`, `scrcpy`, `ffmpeg` and the virtual webcam driver, starts the background services and adds two Plasma widgets: **Phone Screen** for your desktop and **Phone Manager** for your system tray. Everything is installed into your home folder, so you're free to delete the cloned folder afterwards.
 
 > [!TIP]
 > Turn on **USB debugging** on your phone, plug it in and allow this computer when the phone asks. That one plug is all it needs: from then on the phone is found over USB or Wi-Fi on its own.

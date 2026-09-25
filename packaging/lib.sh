@@ -11,6 +11,8 @@ UPDATE_PENDING="$HOME/.local/state/$UPDATE_ID/update-pending"
 USER_STATE_DIR="$HOME/.local/state/$UPDATE_ID"
 USER_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/$UPDATE_ID"
 APP_DIR="$USER_DATA_DIR/app"
+UPDATE_SOURCE_DIR="$USER_DATA_DIR/source"
+UPDATE_GIT_ENV=(GIT_TERMINAL_PROMPT=0 GIT_ASKPASS= "GIT_SSH_COMMAND=ssh -o BatchMode=yes -o ConnectTimeout=15")
 APP_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/Linux-Android-Daemon"
 APP_CONFIG_FILE="$APP_CONFIG_DIR/config.json"
 SESSION_ENV_FILE="$USER_STATE_DIR/session-env"
@@ -47,23 +49,70 @@ install_update_hook() {
     fi
 }
 
+update_source_url() {
+    local checkout="$1" url rest
+    url=$(git -C "$checkout" remote get-url origin 2>/dev/null) || return 1
+    case $url in
+    git@*:*)
+        rest=${url#git@}
+        url="https://${rest/://}"
+        ;;
+    ssh://git@*) url="https://${url#ssh://git@}" ;;
+    esac
+    printf '%s\n' "$url"
+}
+
+prepare_update_source() {
+    local checkout="$1" url branch
+    [[ $checkout -ef $UPDATE_SOURCE_DIR ]] && return 0
+    if ! url=$(update_source_url "$checkout"); then
+        echo "$checkout has no origin remote to keep an update copy of $UPDATE_TITLE from." >&2
+        exit 1
+    fi
+    echo "Keeping a copy of $UPDATE_TITLE in $UPDATE_SOURCE_DIR for updates..."
+    if ! git -C "$UPDATE_SOURCE_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+        rm -rf "$UPDATE_SOURCE_DIR"
+        mkdir -p "$(dirname "$UPDATE_SOURCE_DIR")"
+        if ! env "${UPDATE_GIT_ENV[@]}" git clone --quiet --recurse-submodules "$url" "$UPDATE_SOURCE_DIR"; then
+            echo "Could not clone $url into $UPDATE_SOURCE_DIR." >&2
+            exit 1
+        fi
+        return 0
+    fi
+    git -C "$UPDATE_SOURCE_DIR" remote set-url origin "$url"
+    branch=$(git -C "$UPDATE_SOURCE_DIR" symbolic-ref --short HEAD)
+    if ! env "${UPDATE_GIT_ENV[@]}" git -C "$UPDATE_SOURCE_DIR" fetch --quiet origin; then
+        echo "Could not fetch $url into $UPDATE_SOURCE_DIR." >&2
+        exit 1
+    fi
+    git -C "$UPDATE_SOURCE_DIR" checkout --quiet --force -B "$branch" "origin/$branch"
+    env "${UPDATE_GIT_ENV[@]}" git -C "$UPDATE_SOURCE_DIR" submodule update --init --recursive --quiet
+}
+
+remove_update_source() {
+    [[ -d $UPDATE_SOURCE_DIR ]] || return 0
+    rm -rf "$UPDATE_SOURCE_DIR"
+    rmdir --ignore-fail-on-non-empty "$(dirname "$UPDATE_SOURCE_DIR")"
+}
+
 register_system_updates() {
     local checkout="$1" aur="$2"
     if [[ $aur == true || -n $ATOMIC ]] || ! command -v pacman >/dev/null || ! git -C "$checkout" rev-parse --git-dir >/dev/null 2>&1; then
         unregister_system_updates
         return 0
     fi
+    prepare_update_source "$checkout"
     echo "Registering $UPDATE_TITLE with system updates..."
     install_update_hook "$checkout"
-    printf '%s\n%s\n' "$checkout" "$(id -un)" | update_as_root install -Dm644 /dev/stdin "$UPDATE_STATE_DIR/source"
-    install_update_unit "$checkout"
+    printf '%s\n%s\n' "$UPDATE_SOURCE_DIR" "$(id -un)" | update_as_root install -Dm644 /dev/stdin "$UPDATE_STATE_DIR/source"
+    install_update_unit "$checkout" "$UPDATE_SOURCE_DIR"
     systemctl --user enable "$UPDATE_UNIT" >/dev/null 2>&1
 }
 
 install_update_unit() {
-    local checkout="$1" units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+    local checkout="$1" source="$2" units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
     mkdir -p "$units"
-    sed -e "s|@CHECKOUT@|$checkout|g" -e "s|@UPDATER_DIR@|$UPDATER_DIR|g" "$checkout/packaging/$UPDATE_ID-update.service.in" >"$units/$UPDATE_UNIT"
+    sed -e "s|@CHECKOUT@|$source|g" -e "s|@UPDATER_DIR@|$UPDATER_DIR|g" "$checkout/packaging/$UPDATE_ID-update.service.in" >"$units/$UPDATE_UNIT"
     systemctl --user daemon-reload
 }
 
@@ -78,6 +127,7 @@ unregister_system_updates() {
         systemctl --user daemon-reload
     fi
     rm -f "$UPDATE_PENDING"
+    remove_update_source
 }
 
 remove_legacy_checkout_files() {
