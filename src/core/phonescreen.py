@@ -19,7 +19,7 @@ STATUS_PATH = os.path.join(RUNTIME_DIR, "phonescreen.json")
 CLAIM_GLOB = os.path.join(RUNTIME_DIR, "phonescreen_claim_*.json")
 WINDOW_PATH = os.path.join(RUNTIME_DIR, "phonescreen_window")
 LOG_PATH = os.path.join(RUNTIME_DIR, "phonescreen.log")
-LAUNCHER = os.path.join(cam.REPO_DIR, "src", "scrcpy_launch.py")
+LAUNCHER = cam.LAUNCHER
 
 CLAIM_TTL = 5.0
 WINDOW_GRACE = 20.0

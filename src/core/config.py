@@ -1,7 +1,9 @@
 import json
 import os
+import tempfile
 
-CONFIG_FILE = "config.json"
+CONFIG_DIR = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "Linux-Android-Daemon")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 
 DEFAULTS = {
     "enabled": True,
@@ -37,8 +39,15 @@ def load_config():
     return config
 
 def save_config(config):
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f, indent=4)
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=CONFIG_DIR, prefix=".config.", suffix=".json")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(config, f, indent=4)
+        os.replace(tmp, CONFIG_FILE)
+    except BaseException:
+        os.unlink(tmp)
+        raise
 
 def ensure_device_in_config(config, serial, model=""):
     changed = False

@@ -3,8 +3,10 @@ import re
 import json
 import subprocess
 
-REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-CONFIG_PATH = os.path.join(REPO_DIR, "config.json")
+from core.config import CONFIG_FILE as CONFIG_PATH, save_config
+
+SRC_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LAUNCHER = os.path.join(SRC_DIR, "scrcpy_launch.py")
 
 RUNTIME_DIR = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "Linux-Android-Daemon")
 STATUS_PATH = os.path.join(RUNTIME_DIR, "phonecam.json")
@@ -49,13 +51,6 @@ def load_config():
     cfg.setdefault("devices", {})
     cfg.setdefault("camera", {})
     return cfg
-
-
-def save_config(cfg):
-    tmp = CONFIG_PATH + ".tmp"
-    with open(tmp, "w") as f:
-        json.dump(cfg, f, indent=4)
-    os.replace(tmp, CONFIG_PATH)
 
 
 def camera_settings(cfg):

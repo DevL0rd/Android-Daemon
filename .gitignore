@@ -31,8 +31,7 @@ ENV/
 *.swp
 .DS_Store
 
-# Local config holds secrets (lock PIN) and per-machine device list.
-# Generated from config.example.json by install.sh on first run.
+# Older installs kept the local config here; install.sh moves it to ~/.config/Linux-Android-Daemon.
 config.json
 
 plasmoids/*/contents/ui/lib/

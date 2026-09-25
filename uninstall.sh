@@ -36,6 +36,7 @@ fi
 
 echo "Removing phonecamctl + phonescreenctl + applets..."
 rm -f "$HOME/.local/bin/phonecamctl" "$HOME/.local/bin/phonescreenctl"
+remove_runtime
 rm -f "$CONFIG_DIR/environment.d/linux-android-daemon.conf"
 unset_session_env
 for id in org.devl0rd.phonecam org.devl0rd.phonescreen; do
@@ -51,12 +52,12 @@ fi
 
 remove_scrcpy_release
 rm -rf "${XDG_RUNTIME_DIR:-/tmp}/Linux-Android-Daemon" "$USER_STATE_DIR"
-for directory in "$CONFIG_DIR/environment.d" "$PLASMA_OVERRIDE_DIR" "$UNIT_DIR/default.target.wants" "$UNIT_DIR/graphical-session.target.wants" "$UNIT_DIR" "$CONFIG_DIR/systemd" "$HOME/.local/bin" \
+for directory in "$APP_CONFIG_DIR" "$CONFIG_DIR/environment.d" "$PLASMA_OVERRIDE_DIR" "$UNIT_DIR/default.target.wants" "$UNIT_DIR/graphical-session.target.wants" "$UNIT_DIR" "$CONFIG_DIR/systemd" "$HOME/.local/bin" \
     "${XDG_DATA_HOME:-$HOME/.local/share}/plasma/plasmoids" "${XDG_DATA_HOME:-$HOME/.local/share}/plasma"; do
     [ -d "$directory" ] && rmdir --ignore-fail-on-non-empty "$directory"
 done
 
 echo "  (left the system packages installed: adb, scrcpy, ffmpeg, v4l2loopback, ydotool)"
-echo "  (kept config.json in the repository folder and adb's key in ~/.android that your phones trust)"
+echo "  (kept your settings in $APP_CONFIG_FILE and adb's key in ~/.android that your phones trust)"
 
 echo "Uninstallation complete!"

@@ -4,6 +4,7 @@ set -uo pipefail
 ID="linux-android-daemon"
 TITLE="Linux Android Daemon"
 STATE_FILE="${UPDATE_SOURCE_STATE:-/var/lib/$ID/source}"
+SUPPORT="${LINUX_ANDROID_DAEMON_SUPPORT:-/usr/lib/$ID}"
 
 log() {
     printf '%s: %s\n' "$ID" "$*"
@@ -49,9 +50,9 @@ git_owner merge --ff-only --quiet '@{upstream}' || exit 0
 git_owner submodule update --init --recursive --quiet
 log "updated to $(git_owner rev-parse --short HEAD)"
 
-(cd "$checkout" && "$checkout/install.sh" --system-update-root --owner "$owner")
+LINUX_ANDROID_DAEMON_SOURCE="$checkout" LINUX_ANDROID_DAEMON_SUPPORT="$SUPPORT" "$SUPPORT/install" --system-update-root --owner "$owner"
 if [[ -S /run/user/$uid/bus ]]; then
-    (cd "$checkout" && as_owner "$checkout/install.sh" --system-update)
+    as_owner LINUX_ANDROID_DAEMON_SOURCE="$checkout" LINUX_ANDROID_DAEMON_SUPPORT="$SUPPORT" "$SUPPORT/install" --system-update
 else
     as_owner mkdir -p "$home/.local/state/$ID"
     as_owner touch "$home/.local/state/$ID/update-pending"

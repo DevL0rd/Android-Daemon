@@ -1,15 +1,16 @@
 #!/bin/bash
 set -e
 
-REPO_DIR=$(pwd)
+SOURCE_DIR="${LINUX_ANDROID_DAEMON_SOURCE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+SUPPORT_DIR="${LINUX_ANDROID_DAEMON_SUPPORT:-$SOURCE_DIR/packaging}"
 PLASMA_SERVICE="plasma-plasmashell.service"
 PLASMA_OVERRIDE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/$PLASMA_SERVICE.d"
 PLASMA_OVERRIDE="$PLASMA_OVERRIDE_DIR/linux-android-daemon.conf"
-if [ ! -f "$REPO_DIR/src/daemon.py" ]; then
-    echo "Please run this script from the repository directory."
+if [ ! -f "$SOURCE_DIR/src/daemon.py" ]; then
+    echo "Please run install.sh from the Android-Daemon repository."
     exit 1
 fi
-source "$REPO_DIR/packaging/lib.sh"
+source "$SUPPORT_DIR/lib.sh"
 PATH="$HOME/.local/bin:$PATH:/usr/sbin:/sbin"
 
 AUR=false
@@ -56,7 +57,7 @@ configure_camera_module() {
 options v4l2loopback video_nr=$VIDEO_NR card_label="Phone Camera" exclusive_caps=0 max_width=4096 max_height=4096
 EOF
     echo v4l2loopback | root_run tee /etc/modules-load.d/linux-phonecam.conf >/dev/null
-    if [ -z "$(python3 -c "import sys;sys.path.insert(0,'$REPO_DIR/src');from core import camera as c;print(c.loopback_devnode($VIDEO_NR) or '')" 2>/dev/null)" ]; then
+    if [ -z "$(python3 -B -c "import sys;sys.path.insert(0,sys.argv[1]);from core import camera as c;print(c.loopback_devnode($VIDEO_NR) or '')" "$SOURCE_DIR/src" 2>/dev/null)" ]; then
         root_run modprobe -r v4l2loopback 2>/dev/null || true
         root_run modprobe v4l2loopback || echo "  ! modprobe v4l2loopback failed (a reboot will load it from modules-load.d)"
     fi
@@ -82,7 +83,7 @@ configure_uinput() {
 
 if $SYSTEM_UPDATE_ROOT; then
     [ "$EUID" -eq 0 ] || { echo "--system-update-root runs from the pacman hook"; exit 1; }
-    install_update_hook "$REPO_DIR"
+    install_update_hook "$SOURCE_DIR"
     configure_camera_module
     configure_uinput
     exit 0
@@ -104,18 +105,15 @@ configure_plasma_local_file_access() {
 
 if ! $SYSTEM_UPDATE; then
     echo "Installing dependencies..."
-    "$REPO_DIR/packaging/dependencies.sh"
+    "$SOURCE_DIR/packaging/dependencies.sh"
 fi
 ADB_BIN=$(command -v adb) || { echo "adb is missing; install it and run ./install.sh again." >&2; exit 1; }
 PYTHON_BIN=$(command -v python3) || { echo "python3 is missing; install it and run ./install.sh again." >&2; exit 1; }
 
-# Generate the local (git-ignored) config from the template on first install.
-# It holds per-device settings and the optional lock PIN, so it never goes in git.
-if [ ! -f "$REPO_DIR/config.json" ]; then
-    cp "$REPO_DIR/config.example.json" "$REPO_DIR/config.json"
-    echo "Created config.json from config.example.json."
-    echo "  -> To auto-unlock, set \"lock_pin\" in config.json (it is git-ignored)."
-fi
+systemctl --user stop linux-android-daemon.service linux-phonecam.service 2>/dev/null || true
+remove_legacy_checkout_files "$SOURCE_DIR"
+setup_config "$SOURCE_DIR"
+install_runtime "$SOURCE_DIR"
 
 echo "Setting up systemd user service..."
 mkdir -p ~/.config/systemd/user
@@ -145,12 +143,11 @@ After=graphical-session.target linux-android-adb.service
 
 [Service]
 Type=simple
-WorkingDirectory=$REPO_DIR
-ExecStart=$PYTHON_BIN $REPO_DIR/src/daemon.py
+ExecStart=$PYTHON_BIN $APP_DIR/src/daemon.py
 Restart=always
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1
-Environment=PYTHONPATH=$REPO_DIR/src
+Environment=PYTHONPATH=$APP_DIR/src
 Environment=PATH=$SERVICE_PATH
 
 [Install]
@@ -172,12 +169,10 @@ echo "Setting up the Phone Camera (virtual webcam)..."
 # 2. Make the loopback device persistent and named, created on boot
 $SYSTEM_UPDATE || configure_camera_module
 
-# 3. phonecamctl + phonescreenctl onto PATH (symlinked back to the repo)
 BIN_DIR="$HOME/.local/bin"
 mkdir -p "$BIN_DIR"
-chmod +x "$REPO_DIR/bin/phonecamctl" "$REPO_DIR/bin/phonescreenctl"
-ln -sf "$REPO_DIR/bin/phonecamctl" "$BIN_DIR/phonecamctl"
-ln -sf "$REPO_DIR/bin/phonescreenctl" "$BIN_DIR/phonescreenctl"
+ln -sfn "$APP_DIR/bin/phonecamctl" "$BIN_DIR/phonecamctl"
+ln -sfn "$APP_DIR/bin/phonescreenctl" "$BIN_DIR/phonescreenctl"
 echo "Linked phonecamctl + phonescreenctl into $BIN_DIR"
 
 # 4. let the applet read the tmpfs status snapshot in-process via QML XHR
@@ -192,43 +187,45 @@ After=graphical-session.target linux-android-adb.service
 
 [Service]
 Type=simple
-WorkingDirectory=$REPO_DIR
-ExecStart=$PYTHON_BIN $REPO_DIR/src/camera_daemon.py
+ExecStart=$PYTHON_BIN $APP_DIR/src/camera_daemon.py
 Restart=always
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1
-Environment=PYTHONPATH=$REPO_DIR/src
+Environment=PYTHONPATH=$APP_DIR/src
 Environment=PATH=$SERVICE_PATH
 
 [Install]
 WantedBy=default.target
 EOF
 systemctl --user daemon-reload
-systemctl --user enable --now linux-phonecam.service >/dev/null 2>&1 \
+systemctl --user enable linux-phonecam.service >/dev/null 2>&1 && systemctl --user restart linux-phonecam.service \
     && echo "Enabled linux-phonecam.service" \
     || echo "  ! could not enable linux-phonecam.service — enable it manually"
 
 # 6. install the plasmoids (tray Phone Camera + desktop Phone Screen)
-if [ ! -e "$REPO_DIR/shared/common/FileWatcher.qml" ]; then
+if [ ! -e "$SOURCE_DIR/shared/common/FileWatcher.qml" ]; then
     echo "  ! shared/common (Plasma-Shared submodule) is empty." >&2
     echo "    Run: git submodule update --init --recursive" >&2
     exit 1
 fi
 if command -v kpackagetool6 >/dev/null 2>&1; then
     echo "Installing the Plasma widgets..."
-    for d in "$REPO_DIR"/plasmoids/org.devl0rd.phonecam "$REPO_DIR"/plasmoids/org.devl0rd.phonescreen; do
-        id=$(basename "$d")
-        rm -f "$d/contents/ui/FileWatcher.qml"
+    PLASMOID_STAGE=$(mktemp -d)
+    trap 'rm -rf "$PLASMOID_STAGE"' EXIT
+    for id in org.devl0rd.phonecam org.devl0rd.phonescreen; do
+        d="$PLASMOID_STAGE/$id"
+        cp -r "$SOURCE_DIR/plasmoids/$id" "$d"
         mkdir -p "$d/contents/ui/lib"
-        cp "$REPO_DIR/shared/common/"*.qml "$REPO_DIR/shared/common/"*.js "$REPO_DIR/shared/lib/"* "$d/contents/ui/lib/"
+        cp "$SOURCE_DIR/shared/common/"*.qml "$SOURCE_DIR/shared/common/"*.js "$SOURCE_DIR/shared/lib/"* "$d/contents/ui/lib/"
         if kpackagetool6 -t Plasma/Applet -u "$d" >/dev/null 2>&1; then
             echo "  upgraded $id"
         else
             kpackagetool6 -t Plasma/Applet -i "$d" >/dev/null 2>&1 \
                 && echo "  installed $id" \
-                || echo "  ! applet install failed — run: kpackagetool6 -t Plasma/Applet -i $d"
+                || echo "  ! applet install failed for $id — run ./install.sh again"
         fi
     done
+    rm -rf "$PLASMOID_STAGE"
 else
     echo "  ! kpackagetool6 not found — install the applets manually from plasmoids/"
 fi
@@ -274,10 +271,11 @@ done
 systemctl --user restart linux-android-daemon.service 2>/dev/null || true
 
 if $SYSTEM_UPDATE; then
+    [ -e "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/$UPDATE_UNIT" ] && install_update_unit "$SOURCE_DIR"
     notify_updated "The phone daemon and its widgets are up to date. Restart Plasma or log out and back in to load the updated widgets."
     exit 0
 fi
-register_system_updates "$REPO_DIR" "$AUR"
+register_system_updates "$SOURCE_DIR" "$AUR"
 
 echo ""
 echo "Done!"
@@ -288,7 +286,7 @@ echo "                  (or while the popup is open), and follows USB<->WiFi liv
 echo "  Desktop screen: add the 'Phone Screen' widget directly to your desktop."
 echo "                  Press Show to pin the real (interactive) scrcpy mirror over"
 echo "                  it; it stays connected and auto-picks USB/Wi-Fi."
-echo "  Edit config.json to tweak per-phone behavior; camera settings live under \"camera\"."
+echo "  Edit $APP_CONFIG_FILE to tweak per-phone behavior; camera settings live under \"camera\"."
 echo "  Logs: journalctl --user -u linux-android-daemon.service -u linux-phonecam.service -f"
 
 echo "Restarting Plasma…"

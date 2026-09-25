@@ -3,7 +3,8 @@
 
 Reads/writes the shared config.json camera block and pokes runtime files the
 daemon watches. Kept tiny and cwd-independent (the applet launches it from
-plasmashell): all paths are resolved from the repo, not the working directory.
+plasmashell): all paths are resolved from the installed copy, not the working
+directory.
 
 Usage:
     phonecamctl state                 # print the live status JSON
@@ -18,8 +19,6 @@ import sys
 import json
 import time
 
-# realpath (not abspath) so this resolves correctly when run via the
-# ~/.local/bin/phonecamctl symlink — otherwise `core` can't be imported.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "src"))
 from core import camera as cam
 
@@ -158,7 +157,7 @@ def cmd_view(args):
         serial = cam.camera_settings(cfg).get("active_serial", "") \
             or cam.pick_active_serial(cam.camera_settings(cfg), cfg) \
             or next(iter(cfg.get("devices", {})), "")
-    launcher = os.path.join(cam.REPO_DIR, "src", "scrcpy_launch.py")
+    launcher = cam.LAUNCHER
     if not serial:
         print("no phone to view", file=sys.stderr)
         return 1

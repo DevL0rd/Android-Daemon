@@ -48,7 +48,7 @@ cd Android-Daemon
 ./install.sh
 ```
 
-That's it. The installer grabs `adb`, `scrcpy`, `ffmpeg` and the virtual webcam driver, starts the background services and adds two Plasma widgets: **Phone Screen** for your desktop and **Phone Manager** for your system tray.
+That's it. The installer grabs `adb`, `scrcpy`, `ffmpeg` and the virtual webcam driver, starts the background services and adds two Plasma widgets: **Phone Screen** for your desktop and **Phone Manager** for your system tray. Everything is installed into your home folder, so the cloned folder is only used to pull updates.
 
 > [!TIP]
 > Turn on **USB debugging** on your phone, plug it in and allow this computer when the phone asks. That one plug is all it needs: from then on the phone is found over USB or Wi-Fi on its own.
@@ -64,7 +64,7 @@ That's it. The installer grabs `adb`, `scrcpy`, `ffmpeg` and the virtual webcam 
   </tr>
   <tr>
     <td>🧹 <b>Remove</b></td>
-    <td>Run <code>./uninstall.sh</code>. The services, widgets and webcam device go away and your system is left as it was. Packages like <code>adb</code> and <code>scrcpy</code> from your package manager stay installed, and so does the adb key your phones trust.</td>
+    <td>Run <code>./uninstall.sh</code>. The services, widgets and webcam device go away and your system is left as it was. Your settings stay in <code>~/.config/Linux-Android-Daemon</code>. Packages like <code>adb</code> and <code>scrcpy</code> from your package manager stay installed, and so does the adb key your phones trust.</td>
   </tr>
   <tr>
     <td>🖥️ <b>Needs</b></td>
@@ -301,7 +301,7 @@ Two command line tools come along for scripting: `phonescreenctl` (lock, unlock,
 
 ## ⚙️ Configuration
 
-Every setting from the Settings tab is saved in `config.json` in the repository folder. It's created for you on install, never committed, and picked up the moment you save a change. New phones are added automatically the first time they're plugged in, starting from `defaults`.
+Every setting from the Settings tab is saved in `~/.config/Linux-Android-Daemon/config.json`. It's created for you on install, kept when you uninstall, and picked up the moment you save a change. If an older install kept it in the repository folder, the installer moves it there for you. New phones are added automatically the first time they're plugged in, starting from `defaults`.
 
 <details>
 <summary><b>📱 Per-phone settings</b></summary>
@@ -354,7 +354,7 @@ The webcam is shared by all phones, so its settings live in a separate `camera` 
 </details>
 
 > [!NOTE]
-> Your PIN is stored as plain text in `config.json`, which only lives on your machine. Leave auto-unlock off on a computer other people can log into.
+> Your PIN is stored as plain text in `config.json`, which only lives on your machine and only your account can read. Leave auto-unlock off on a computer other people can log into.
 
 ---
 

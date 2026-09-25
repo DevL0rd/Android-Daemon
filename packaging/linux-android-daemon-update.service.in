@@ -5,8 +5,9 @@ After=graphical-session.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=@CHECKOUT@
-ExecStart=@CHECKOUT@/install.sh --system-update
+Environment=LINUX_ANDROID_DAEMON_SOURCE=@CHECKOUT@
+Environment=LINUX_ANDROID_DAEMON_SUPPORT=@UPDATER_DIR@
+ExecStart=@UPDATER_DIR@/install --system-update
 
 [Install]
 WantedBy=graphical-session.target

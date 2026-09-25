@@ -26,9 +26,7 @@ import subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from core.camera import adb_server, adb_device_lines
-
-REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CONFIG_PATH = os.path.join(REPO_DIR, "config.json")
+from core.config import CONFIG_FILE as CONFIG_PATH
 
 # Lock-state tokens seen in `dumpsys window` on a locked device
 LOCK_TOKENS = ("isKeyguardShowing=true", "mDreamingLockscreen=true")
