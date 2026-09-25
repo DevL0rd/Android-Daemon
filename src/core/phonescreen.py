@@ -479,11 +479,34 @@ def _strip_group_block(path, group):
         pass
 
 
+def _read_text(path):
+    try:
+        with open(path) as f:
+            return f.read()
+    except OSError:
+        return None
+
+
 def clear_rule():
-    ids = [r for r in _kread("General", "rules", "").split(",") if r and r != KWIN_RULE_ID]
-    _kwrite_general("rules", ",".join(ids))
-    _kwrite_general("count", str(len(ids)))
-    _strip_group_block(_kwinrulesrc_path(), KWIN_RULE_ID)
+    path = _kwinrulesrc_path()
+    listed = [r for r in _kread("General", "rules", "").split(",") if r]
+    text = _read_text(path) or ""
+    if KWIN_RULE_ID not in listed and "[%s]" % KWIN_RULE_ID not in text.splitlines():
+        return
+    ids = [r for r in listed if r != KWIN_RULE_ID]
+    if ids:
+        _kwrite_general("rules", ",".join(ids))
+        _kwrite_general("count", str(len(ids)))
+    else:
+        for key in ("rules", "count"):
+            subprocess.run(["kwriteconfig6", "--file", "kwinrulesrc", "--group", "General",
+                            "--key", key, "--delete"], capture_output=True)
+    _strip_group_block(path, KWIN_RULE_ID)
+    if not (_read_text(path) or "").strip():
+        try:
+            os.remove(path)
+        except OSError:
+            pass
     kwin_reconfigure()
 
 
