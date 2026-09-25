@@ -53,7 +53,7 @@ Item {
         id: focusGuard
         interval: 150
         onTriggered: if (!pane.winActive && root.expanded && !root.pinned)
-                         activeProbe.connectSource("kdotool getactivewindow getwindowname")
+                         activeProbe.connectSource("PATH=\"$HOME/.local/bin:$PATH\" kdotool getactivewindow getwindowname")
     }
     P5Support.DataSource {
         id: activeProbe

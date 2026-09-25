@@ -12,7 +12,7 @@ import "lib/MirrorState.js" as MirrorState
 PlasmoidItem {
     id: root
 
-    readonly property string ctlBin: "$HOME/.local/bin/phonescreenctl"
+    readonly property string ctlBin: "PATH=\"$HOME/.local/bin:$PATH\" $HOME/.local/bin/phonescreenctl"
     readonly property string serial: (Plasmoid.configuration.deviceSerial || "").trim()
     readonly property string serialArg: serial !== "" ? " " + serial : ""
     readonly property bool inPanel: Plasmoid.formFactor === PlasmaCore.Types.Horizontal || Plasmoid.formFactor === PlasmaCore.Types.Vertical

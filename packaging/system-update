@@ -20,7 +20,7 @@ home=$(getent passwd "$owner" | cut -d: -f6)
 as_owner() {
     runuser -u "$owner" -- env -i HOME="$home" USER="$owner" LOGNAME="$owner" PATH="$home/.local/bin:/usr/local/bin:/usr/bin:/bin" \
         LANG="${LANG:-C.UTF-8}" XDG_RUNTIME_DIR="/run/user/$uid" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" \
-        GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=15" "$@"
+        GIT_TERMINAL_PROMPT=0 GIT_ASKPASS= GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=15" "$@"
 }
 
 git_owner() {
@@ -49,11 +49,7 @@ git_owner merge --ff-only --quiet '@{upstream}' || exit 0
 git_owner submodule update --init --recursive --quiet
 log "updated to $(git_owner rev-parse --short HEAD)"
 
-install -Dm755 "$checkout/packaging/system-update" "/usr/lib/$ID/system-update"
-install -Dm644 "$checkout/packaging/$ID-update.hook" "/etc/pacman.d/hooks/$ID-update.hook"
-if grep -q -- '--system-update-root' "$checkout/install.sh"; then
-    (cd "$checkout" && "$checkout/install.sh" --system-update-root --owner "$owner")
-fi
+(cd "$checkout" && "$checkout/install.sh" --system-update-root --owner "$owner")
 if [[ -S /run/user/$uid/bus ]]; then
     (cd "$checkout" && as_owner "$checkout/install.sh" --system-update)
 else

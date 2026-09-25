@@ -11,8 +11,8 @@ import "lib/MirrorState.js" as MirrorState
 PlasmoidItem {
     id: root
 
-    readonly property string ctlBin: "$HOME/.local/bin/phonecamctl"
-    readonly property string psBin: "$HOME/.local/bin/phonescreenctl"
+    readonly property string ctlBin: "PATH=\"$HOME/.local/bin:$PATH\" $HOME/.local/bin/phonecamctl"
+    readonly property string psBin: "PATH=\"$HOME/.local/bin:$PATH\" $HOME/.local/bin/phonescreenctl"
     readonly property color accent: Plasmoid.configuration.accentColor !== ""
         ? Plasmoid.configuration.accentColor : Kirigami.Theme.highlightColor
     readonly property real maxZoom: Plasmoid.configuration.maxZoom

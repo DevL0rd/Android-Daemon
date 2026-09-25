@@ -10,19 +10,23 @@ if [ ! -f "$REPO_DIR/src/daemon.py" ]; then
     exit 1
 fi
 source "$REPO_DIR/packaging/lib.sh"
+PATH="$HOME/.local/bin:$PATH:/usr/sbin:/sbin"
 
 AUR=false
 SYSTEM_UPDATE=false
 SYSTEM_UPDATE_ROOT=false
-INSTALL_USER="$(id -un)"
 VIDEO_NR=9
+UINPUT_RULE="/etc/udev/rules.d/70-linux-android-daemon-uinput.rules"
+ENVIRONMENT_FILE="$HOME/.config/environment.d/linux-android-daemon.conf"
+YDOTOOL_ENVIRONMENT_FILE="$HOME/.config/environment.d/ydotool.conf"
+SERVICE_PATH="%h/.local/bin:/usr/local/bin:/usr/bin:/bin"
 [[ ${LINUX_ANDROID_DAEMON_AUR:-} == @(1|true|yes) ]] && AUR=true
 while [ $# -gt 0 ]; do
     case "$1" in
     --aur) AUR=true ;;
     --system-update) SYSTEM_UPDATE=true ;;
     --system-update-root) SYSTEM_UPDATE_ROOT=true ;;
-    --owner) INSTALL_USER="$2"; shift ;;
+    --owner) shift ;;
     -h|--help)
         echo "Usage: ./install.sh [--aur]"
         echo "Installs the daemon and widgets and, for a git checkout on a pacman system, updates them with every system update."
@@ -43,7 +47,7 @@ root_run() {
 }
 
 configure_camera_module() {
-    pacman -Qq v4l2loopback-dkms >/dev/null 2>&1 || return 0
+    modinfo v4l2loopback >/dev/null 2>&1 || return 0
     echo "Writing /etc/modprobe.d + /etc/modules-load.d for the 'Phone Camera' device..."
     root_run tee /etc/modprobe.d/linux-phonecam.conf >/dev/null <<EOF
 # Android-Daemon :: phone webcam sink.
@@ -58,21 +62,27 @@ EOF
     fi
 }
 
-configure_uinput() {
-    lsmod | grep -q '^uinput' || root_run modprobe uinput 2>/dev/null || echo "  ! could not load uinput"
-    echo uinput | root_run tee /etc/modules-load.d/uinput.conf >/dev/null 2>&1 || true
-    root_run tee /etc/udev/rules.d/99-uinput-ydotool.rules >/dev/null 2>&1 <<'EOF' || true
-KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"
-EOF
-    root_run udevadm control --reload-rules 2>/dev/null && root_run udevadm trigger 2>/dev/null || true
-    if ! id -nG "$INSTALL_USER" | grep -qw input; then
-        root_run usermod -aG input "$INSTALL_USER" 2>/dev/null \
-            && echo "  added $INSTALL_USER to the 'input' group; log out and in once for it to take effect" || true
+remove_legacy_uinput_setup() {
+    if [ "$(cat /etc/modules-load.d/uinput.conf 2>/dev/null)" = uinput ]; then
+        root_run rm -f /etc/modules-load.d/uinput.conf
     fi
+    if grep -qx 'KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"' /etc/udev/rules.d/99-uinput-ydotool.rules 2>/dev/null; then
+        root_run rm -f /etc/udev/rules.d/99-uinput-ydotool.rules
+    fi
+}
+
+configure_uinput() {
+    command -v ydotoold >/dev/null 2>&1 || return 0
+    remove_legacy_uinput_setup
+    printf '%s\n' 'KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"' \
+        | root_run install -Dm644 /dev/stdin "$UINPUT_RULE"
+    lsmod | grep -q '^uinput' || root_run modprobe uinput 2>/dev/null || echo "  ! could not load uinput"
+    root_run udevadm control --reload-rules 2>/dev/null && root_run udevadm trigger --sysname-match=uinput 2>/dev/null || true
 }
 
 if $SYSTEM_UPDATE_ROOT; then
     [ "$EUID" -eq 0 ] || { echo "--system-update-root runs from the pacman hook"; exit 1; }
+    install_update_hook "$REPO_DIR"
     configure_camera_module
     configure_uinput
     exit 0
@@ -83,32 +93,21 @@ configure_plasma_local_file_access() {
         echo "Error: refusing to overwrite symbolic link $PLASMA_OVERRIDE" >&2
         exit 1
     fi
-    mkdir -p "$PLASMA_OVERRIDE_DIR" "$HOME/.config/environment.d"
+    set_session_env QML_XHR_ALLOW_FILE_READ 1 "$ENVIRONMENT_FILE"
+    mkdir -p "$PLASMA_OVERRIDE_DIR" "$(dirname "$ENVIRONMENT_FILE")"
     printf '[Service]\nEnvironment=QML_XHR_ALLOW_FILE_READ=1\n' > "$PLASMA_OVERRIDE"
     chmod 0644 "$PLASMA_OVERRIDE"
-    printf 'QML_XHR_ALLOW_FILE_READ=1\n' > "$HOME/.config/environment.d/linux-android-daemon.conf"
-    systemctl --user set-environment QML_XHR_ALLOW_FILE_READ=1 2>/dev/null || true
+    printf 'QML_XHR_ALLOW_FILE_READ=1\n' > "$ENVIRONMENT_FILE"
     systemctl --user daemon-reload
     echo "Enabled local file access for managed Plasma sessions."
 }
 
-# Install the tools the daemon shells out to (official repos: pacman).
-#   adb  -> android-tools     scrcpy -> scrcpy     preview/feed -> ffmpeg
-# (v4l2loopback for the virtual webcam is installed in the Phone Camera step below.)
 if ! $SYSTEM_UPDATE; then
-echo "Checking dependencies..."
-deps=()
-pacman -Qq android-tools >/dev/null 2>&1 || deps+=(android-tools)
-pacman -Qq scrcpy        >/dev/null 2>&1 || deps+=(scrcpy)
-pacman -Qq ffmpeg        >/dev/null 2>&1 || deps+=(ffmpeg)
-if [ ${#deps[@]} -gt 0 ]; then
-    echo "Installing: ${deps[*]} (needs sudo)..."
-    sudo pacman -S --needed "${deps[@]}" || \
-        echo "  ! could not install ${deps[*]} — install them manually before using the service"
-else
-    echo "  base dependencies present (adb, scrcpy, ffmpeg)."
+    echo "Installing dependencies..."
+    "$REPO_DIR/packaging/dependencies.sh"
 fi
-fi
+ADB_BIN=$(command -v adb) || { echo "adb is missing; install it and run ./install.sh again." >&2; exit 1; }
+PYTHON_BIN=$(command -v python3) || { echo "python3 is missing; install it and run ./install.sh again." >&2; exit 1; }
 
 # Generate the local (git-ignored) config from the template on first install.
 # It holds per-device settings and the optional lock PIN, so it never goes in git.
@@ -128,9 +127,9 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-ExecStartPre=-/usr/bin/adb -L tcp:5037 kill-server
-ExecStart=/usr/bin/adb -L tcp:5037 server nodaemon
-ExecStop=/usr/bin/adb -L tcp:5037 kill-server
+ExecStartPre=-$ADB_BIN -L tcp:5037 kill-server
+ExecStart=$ADB_BIN -L tcp:5037 server nodaemon
+ExecStop=$ADB_BIN -L tcp:5037 kill-server
 Restart=always
 RestartSec=2
 
@@ -147,11 +146,12 @@ After=graphical-session.target linux-android-adb.service
 [Service]
 Type=simple
 WorkingDirectory=$REPO_DIR
-ExecStart=/usr/bin/python3 $REPO_DIR/src/daemon.py
+ExecStart=$PYTHON_BIN $REPO_DIR/src/daemon.py
 Restart=always
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONPATH=$REPO_DIR/src
+Environment=PATH=$SERVICE_PATH
 
 [Install]
 WantedBy=default.target
@@ -168,13 +168,6 @@ systemctl --user enable --now linux-android-daemon.service
 # ===========================================================================
 echo ""
 echo "Setting up the Phone Camera (virtual webcam)..."
-
-# 1. v4l2loopback (the virtual camera kernel module) from the official repos
-if ! $SYSTEM_UPDATE && ! pacman -Qq v4l2loopback-dkms >/dev/null 2>&1; then
-    echo "Installing v4l2loopback-dkms + utils (needs sudo)..."
-    sudo pacman -S --needed v4l2loopback-dkms v4l2loopback-utils || \
-        echo "  ! could not install v4l2loopback; the webcam won't work until it is installed"
-fi
 
 # 2. Make the loopback device persistent and named, created on boot
 $SYSTEM_UPDATE || configure_camera_module
@@ -200,11 +193,12 @@ After=graphical-session.target linux-android-adb.service
 [Service]
 Type=simple
 WorkingDirectory=$REPO_DIR
-ExecStart=/usr/bin/python3 $REPO_DIR/src/camera_daemon.py
+ExecStart=$PYTHON_BIN $REPO_DIR/src/camera_daemon.py
 Restart=always
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONPATH=$REPO_DIR/src
+Environment=PATH=$SERVICE_PATH
 
 [Install]
 WantedBy=default.target
@@ -246,39 +240,25 @@ fi
 #    kdotool (focus the window on KWin). All optional — skipped if it can't be set
 #    up, and the only cost is the panel staying on after unlock.
 echo ""
-echo "Setting up ydotool + kdotool (Phone Screen: panel-off after unlock)..."
-if ! $SYSTEM_UPDATE; then
-    if ! command -v ydotool >/dev/null 2>&1; then
-        sudo pacman -S --needed --noconfirm ydotool 2>/dev/null \
-            || echo "  ! could not install ydotool (panel-off-after-unlock will be skipped)"
-    fi
-    if ! command -v kdotool >/dev/null 2>&1; then
-        if command -v paru >/dev/null 2>&1; then
-            paru -S --needed --noconfirm kdotool 2>/dev/null \
-                || echo "  ! could not install kdotool from the AUR (panel-off-after-unlock will be skipped)"
-        else
-            echo "  ! paru not found; install 'kdotool' from the AUR for panel-off-after-unlock"
-        fi
-    fi
-    configure_uinput
-fi
+echo "Setting up ydotool (Phone Screen: panel-off after unlock)..."
+$SYSTEM_UPDATE || configure_uinput
 # ydotoold user daemon (owns the socket ydotool talks to)
-if command -v ydotoold >/dev/null 2>&1; then
+if YDOTOOLD_BIN=$(command -v ydotoold); then
     cat > "$HOME/.config/systemd/user/ydotoold.service" <<EOF
 [Unit]
 Description=ydotool daemon (virtual input for Phone Screen)
 After=graphical-session.target
 
 [Service]
-ExecStart=/usr/bin/ydotoold --socket-path=%t/.ydotool_socket --socket-own=$(id -u):$(id -g)
+ExecStart=$YDOTOOLD_BIN --socket-path=%t/.ydotool_socket --socket-own=$(id -u):$(id -g)
 Restart=always
 RestartSec=3
 
 [Install]
 WantedBy=default.target
 EOF
-    echo "YDOTOOL_SOCKET=\"$XDG_RUNTIME_DIR/.ydotool_socket\"" > "$HOME/.config/environment.d/ydotool.conf"
-    systemctl --user set-environment YDOTOOL_SOCKET="$XDG_RUNTIME_DIR/.ydotool_socket" 2>/dev/null || true
+    set_session_env YDOTOOL_SOCKET "$XDG_RUNTIME_DIR/.ydotool_socket" "$YDOTOOL_ENVIRONMENT_FILE"
+    echo "YDOTOOL_SOCKET=\"$XDG_RUNTIME_DIR/.ydotool_socket\"" > "$YDOTOOL_ENVIRONMENT_FILE"
     systemctl --user daemon-reload || true
     systemctl --user enable --now ydotoold.service 2>/dev/null \
         && echo "  ydotoold running" \
@@ -288,7 +268,9 @@ fi
 # The daemon now owns the Phone Screen pinned mirror, so it needs the graphical
 # session env (KWin minimize, xprop fullscreen, ydotool screen-off). Import those
 # into the user manager and restart the daemon so it inherits them.
-systemctl --user import-environment DISPLAY WAYLAND_DISPLAY YDOTOOL_SOCKET QML_XHR_ALLOW_FILE_READ 2>/dev/null || true
+for name in DISPLAY WAYLAND_DISPLAY; do
+    [ -n "${!name:-}" ] && set_session_env "$name" "${!name}"
+done
 systemctl --user restart linux-android-daemon.service 2>/dev/null || true
 
 if $SYSTEM_UPDATE; then

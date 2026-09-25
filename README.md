@@ -56,7 +56,7 @@ That's it. The installer grabs `adb`, `scrcpy`, `ffmpeg` and the virtual webcam 
 <table>
   <tr>
     <td>🔄 <b>Update</b></td>
-    <td>On Arch-based systems Android-Daemon updates itself with every system update and lets you know when it has. You can also run <code>git pull && ./install.sh</code> any time; it's safe to repeat and keeps your settings.</td>
+    <td>On Arch-based systems Android-Daemon updates itself with every system update and lets you know when it has. Anywhere else, or any time you like, run <code>git pull && ./install.sh</code>; it's safe to repeat and keeps your settings.</td>
   </tr>
   <tr>
     <td>📦 <b>From a package</b></td>
@@ -64,11 +64,19 @@ That's it. The installer grabs `adb`, `scrcpy`, `ffmpeg` and the virtual webcam 
   </tr>
   <tr>
     <td>🧹 <b>Remove</b></td>
-    <td>Run <code>./uninstall.sh</code>. The services, widgets and webcam device go away; general tools like <code>adb</code> and <code>scrcpy</code> stay installed.</td>
+    <td>Run <code>./uninstall.sh</code>. The services, widgets and webcam device go away and your system is left as it was. Packages like <code>adb</code> and <code>scrcpy</code> from your package manager stay installed, and so does the adb key your phones trust.</td>
   </tr>
   <tr>
     <td>🖥️ <b>Needs</b></td>
-    <td>KDE Plasma 6 on an Arch-based system, and an Android phone with USB debugging. The webcam needs Android 12 or newer.</td>
+    <td>KDE Plasma 6 and an Android phone with USB debugging. The webcam needs Android 12 or newer.</td>
+  </tr>
+  <tr>
+    <td>🐧 <b>Distros</b></td>
+    <td>The installer sets everything up on Arch and Arch-based systems like CachyOS, Fedora, openSUSE Tumbleweed and Debian testing. Where your distro doesn't package <code>scrcpy</code>, it puts scrcpy's official build in your home folder. On Fedora the webcam driver comes from RPM Fusion.</td>
+  </tr>
+  <tr>
+    <td>🧊 <b>Atomic desktops</b></td>
+    <td>On Fedora Atomic desktops like Kinoite, Aurora and Bazzite, and on SteamOS in Desktop Mode, the installer leaves the read-only system untouched and puts <code>scrcpy</code> and <code>adb</code> in <code>~/.local</code>. If the system is missing something a feature needs, like the webcam driver, the installer tells you which features stay off and, on Fedora Atomic, what to add.</td>
   </tr>
 </table>
 
