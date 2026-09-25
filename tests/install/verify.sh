@@ -19,6 +19,7 @@ check "ydotoold.service is enabled" "systemctl --user is-enabled ydotoold.servic
 check "the adb server answers" "adb -L tcp:5037 devices"
 check "the webcam daemon writes its status" "python3 -c 'import json, sys; json.load(open(sys.argv[1]))' $XDG_RUNTIME_DIR/Linux-Android-Daemon/phonecam.json"
 check "phonecamctl runs" "$HOME/.local/bin/phonecamctl state | python3 -c 'import json, sys; json.load(sys.stdin)'"
+check "phonecamctl saves settings to the config" "$HOME/.local/bin/phonecamctl set fps 30 && python3 -c 'import json, sys; assert json.load(open(sys.argv[1]))[\"camera\"][\"fps\"] == 30' ${XDG_CONFIG_HOME:-$HOME/.config}/Linux-Android-Daemon/config.json"
 check "phonescreenctl runs" "$HOME/.local/bin/phonescreenctl state | python3 -c 'import json, sys; json.load(sys.stdin)'"
 for widget in org.devl0rd.phonecam org.devl0rd.phonescreen; do
     check "the $widget widget is installed" "kpackagetool6 -t Plasma/Applet --show $widget"

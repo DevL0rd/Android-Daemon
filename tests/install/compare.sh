@@ -2,7 +2,7 @@
 set -uo pipefail
 
 cd /opt/install-test/snapshots || exit 1
-KEPT='\./\.android(/|$)'
+KEPT='\./\.android(/|$)|\./\.config/Linux-Android-Daemon(/|$)'
 NOISE='\./\.local/state/(UserFeedback\.|kglobalshortcutsstaterc)|\./\.local/share/flatpak(/|$)'
 failed=0
 for snapshot in system etc home-files home-folders session; do
