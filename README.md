@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/DevL0rd/Android-Daemon/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/DevL0rd/Android-Daemon/ci.yml?branch=main&style=for-the-badge&label=build&logo=githubactions&logoColor=white"></a>
   <img alt="KDE Plasma 6" src="https://img.shields.io/badge/KDE_Plasma-6-1d99f3?style=for-the-badge&logo=kde&logoColor=white">
   <img alt="Android" src="https://img.shields.io/badge/Android-USB_+_Wi--Fi-3ddc84?style=for-the-badge&logo=android&logoColor=white">
   <img alt="scrcpy" src="https://img.shields.io/badge/powered_by-scrcpy-8a5cd6?style=for-the-badge">
