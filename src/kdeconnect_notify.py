@@ -15,6 +15,7 @@ import re
 import shutil
 import threading
 import subprocess
+import sys
 
 KDECONNECT = "org.kde.kdeconnect"
 NOTIF_IFACE = "org.kde.kdeconnect.device.notifications"
@@ -67,7 +68,7 @@ def _open_and_expand(launcher):
     shade so the notification is right there to tap in the mirror."""
     if not _scrcpy_running():
         try:
-            subprocess.Popen(["python3", launcher, "--auto"])
+            subprocess.Popen([sys.executable, launcher, "--auto"])
         except Exception as e:
             print(f"[kdeconnect] failed to launch scrcpy: {e}")
     target = _adb_target()

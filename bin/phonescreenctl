@@ -110,7 +110,7 @@ def cmd_window(args):
         return 1
     ps._runtime()
     log = open(ps.LOG_PATH, "a")
-    subprocess.Popen(["python3", ps.LAUNCHER, "--auto", serial],
+    subprocess.Popen([sys.executable, ps.LAUNCHER, "--auto", serial],
                      stdout=log, stderr=log, start_new_session=True)
     return 0
 

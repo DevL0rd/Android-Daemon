@@ -166,7 +166,7 @@ def cmd_view(args):
     log = open(os.path.join(cam.RUNTIME_DIR, "view.log"), "w")
     log.write("launching: %s --auto %s\n" % (launcher, serial))
     log.flush()
-    subprocess.Popen(["python3", launcher, "--auto", serial],
+    subprocess.Popen([sys.executable, launcher, "--auto", serial],
                      stdout=log, stderr=log, start_new_session=True)
     return 0
 

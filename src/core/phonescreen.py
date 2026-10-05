@@ -6,6 +6,7 @@ import time
 import shutil
 import threading
 import subprocess
+import sys
 
 from core import camera as cam
 from core import reachability
@@ -624,7 +625,7 @@ class PinnedMirror:
         flags += extra
         try:
             _runtime()
-            proc = subprocess.Popen(["python3", "-u", LAUNCHER, "--auto", serial] + flags,
+            proc = subprocess.Popen([sys.executable, "-u", LAUNCHER, "--auto", serial] + flags,
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                     text=True, bufsize=1)
         except OSError as e:
