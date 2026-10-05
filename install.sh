@@ -107,7 +107,14 @@ if ! $SYSTEM_UPDATE; then
     echo "Installing dependencies..."
     "$SOURCE_DIR/packaging/dependencies.sh"
 fi
-ADB_BIN=$(command -v adb) || { echo "adb is missing; install it and run ./install.sh again." >&2; exit 1; }
+ADB_UNIT="$HOME/.config/systemd/user/linux-android-adb.service"
+if $SYSTEM_UPDATE; then
+    ADB_BIN=$(sed -n 's/^ExecStart=\([^ ]*\) .*/\1/p' "$ADB_UNIT" 2>/dev/null)
+    [[ -x $ADB_BIN ]] || { echo "the adb from $ADB_UNIT is missing; run ./install.sh again." >&2; exit 1; }
+else
+    ADB_BIN=$(command -v adb) || { echo "adb is missing; install it and run ./install.sh again." >&2; exit 1; }
+fi
+SERVICE_PATH="$(dirname "$ADB_BIN"):$SERVICE_PATH"
 PYTHON_BIN=$(command -v python3) || { echo "python3 is missing; install it and run ./install.sh again." >&2; exit 1; }
 
 systemctl --user stop linux-android-daemon.service linux-phonecam.service 2>/dev/null || true
@@ -118,7 +125,7 @@ install_runtime "$SOURCE_DIR"
 echo "Setting up systemd user service..."
 mkdir -p ~/.config/systemd/user
 
-cat <<EOF > ~/.config/systemd/user/linux-android-adb.service
+cat <<EOF > "$ADB_UNIT"
 [Unit]
 Description=Android-Daemon adb server
 After=graphical-session.target
