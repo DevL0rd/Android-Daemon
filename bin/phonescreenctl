@@ -13,6 +13,7 @@ Usage:
     phonescreenctl state
     phonescreenctl claim <name> <priority> <x> <y> <w> <h> [serial] [--above 0|1] [--borderless 0|1] [--extra "args"]
     phonescreenctl release <name>
+    phonescreenctl raise                          # bring the mirror to the front and keep it there
     phonescreenctl window [serial]                # pop out: movable window (pauses pinned)
     phonescreenctl lock   [serial]                # lock the phone (instant hide)
     phonescreenctl unlock [serial]                # wake + PIN-unlock (instant show)
@@ -91,13 +92,11 @@ def cmd_release(args):
 
 
 def cmd_raise():
-    """Raise the pinned mirror to the top of the stack — used by the tray popup so
-    its embedded mirror sits above the popup window. No-op if kdotool isn't set up."""
-    try:
-        subprocess.run(["kdotool", "search", "--name", ps.TITLE_TOKEN, "windowraise"],
-                       capture_output=True, timeout=5)
-    except (OSError, subprocess.TimeoutExpired):
-        pass
+    """Bring the pinned mirror to the front and keep it there while a widget claims
+    it, even if it was pinned below normal windows. No-op if kdotool isn't set up."""
+    ps.request_front()
+    time.sleep(0.4)
+    ps.raise_window()
     return 0
 
 

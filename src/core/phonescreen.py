@@ -19,6 +19,7 @@ RUNTIME_DIR = cam.RUNTIME_DIR
 STATUS_PATH = os.path.join(RUNTIME_DIR, "phonescreen.json")
 CLAIM_GLOB = os.path.join(RUNTIME_DIR, "phonescreen_claim_*.json")
 WINDOW_PATH = os.path.join(RUNTIME_DIR, "phonescreen_window")
+FRONT_PATH = os.path.join(RUNTIME_DIR, "phonescreen_front")
 LOG_PATH = os.path.join(RUNTIME_DIR, "phonescreen.log")
 LAUNCHER = cam.LAUNCHER
 
@@ -68,6 +69,29 @@ def read_claims():
         c["name"] = os.path.basename(path)[len("phonescreen_claim_"):-len(".json")]
         out.append(c)
     return out
+
+
+def request_front():
+    touch(FRONT_PATH)
+
+
+def clear_front():
+    try:
+        os.remove(FRONT_PATH)
+    except OSError:
+        pass
+
+
+def front_requested():
+    return os.path.exists(FRONT_PATH)
+
+
+def raise_window():
+    try:
+        subprocess.run(["kdotool", "search", "--name", TITLE_TOKEN, "windowraise"],
+                       capture_output=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
 
 
 def pick_winner(claims):
@@ -581,6 +605,7 @@ class PinnedMirror:
     def reconcile(self):
         win = pick_winner(read_claims())
         if win is None:
+            clear_front()
             if not self.persist or self.last_geom is None:
                 return
             x, y, w, h, above, borderless = self.last_geom
@@ -588,7 +613,7 @@ class PinnedMirror:
         else:
             x, y = int(win.get("x", 0)), int(win.get("y", 0))
             w, h = int(win.get("w", 400)), int(win.get("h", 800))
-            above = bool(win.get("above", False))
+            above = bool(win.get("above", False)) or front_requested()
             borderless = bool(win.get("borderless", True))
             self.last_geom = (x, y, w, h, above, borderless)
             serial = win.get("serial") or resolve_serial()
