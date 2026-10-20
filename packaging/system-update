@@ -11,6 +11,13 @@ log() {
 }
 
 [[ -r $STATE_FILE ]] || exit 0
+state_dir=$(dirname "$STATE_FILE")
+failed_file="$state_dir/update-failed"
+exec 9>"$state_dir/update.lock"
+if ! flock -n 9; then
+    log "another update is already running, skipping"
+    exit 0
+fi
 mapfile -t state <"$STATE_FILE"
 checkout="${state[0]:-}"
 owner="${state[1]:-}"
@@ -50,11 +57,23 @@ git_owner merge --ff-only --quiet '@{upstream}' || exit 0
 git_owner submodule update --init --recursive --quiet
 log "updated to $(git_owner rev-parse --short HEAD)"
 
-LINUX_ANDROID_DAEMON_SOURCE="$checkout" LINUX_ANDROID_DAEMON_SUPPORT="$SUPPORT" "$SUPPORT/install" --system-update-root --owner "$owner"
+inputs=$(git_owner rev-parse HEAD)
+if [[ $(cat "$failed_file" 2>/dev/null) == "$inputs" ]]; then
+    log "last update failed for these inputs, skipping; run ./install.sh to retry"
+    exit 0
+fi
+status=0
+LINUX_ANDROID_DAEMON_SOURCE="$checkout" LINUX_ANDROID_DAEMON_SUPPORT="$SUPPORT" "$SUPPORT/install" --system-update-root --owner "$owner" || status=1
 if [[ -S /run/user/$uid/bus ]]; then
-    as_owner LINUX_ANDROID_DAEMON_SOURCE="$checkout" LINUX_ANDROID_DAEMON_SUPPORT="$SUPPORT" "$SUPPORT/install" --system-update
+    as_owner LINUX_ANDROID_DAEMON_SOURCE="$checkout" LINUX_ANDROID_DAEMON_SUPPORT="$SUPPORT" "$SUPPORT/install" --system-update || status=1
 else
     as_owner mkdir -p "$home/.local/state/$ID"
     as_owner touch "$home/.local/state/$ID/update-pending"
     log "$TITLE will finish updating at your next login"
+fi
+if [[ $status -ne 0 ]]; then
+    printf '%s\n' "$inputs" >"$failed_file"
+    log "the update failed, it will not be retried until the source changes"
+else
+    rm -f "$failed_file"
 fi
