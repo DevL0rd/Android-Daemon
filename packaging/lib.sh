@@ -105,6 +105,7 @@ register_system_updates() {
     echo "Registering $UPDATE_TITLE with system updates..."
     install_update_hook "$checkout"
     printf '%s\n%s\n' "$UPDATE_SOURCE_DIR" "$(id -un)" | update_as_root install -Dm644 /dev/stdin "$UPDATE_STATE_DIR/source"
+    update_as_root rm -f "$UPDATE_STATE_DIR/update-failed"
     install_update_unit "$checkout" "$UPDATE_SOURCE_DIR"
     systemctl --user enable "$UPDATE_UNIT" >/dev/null 2>&1
 }

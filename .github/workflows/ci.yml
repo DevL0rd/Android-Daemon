@@ -81,5 +81,8 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Give KWin a vgem render node, so it composites with OpenGL on Mesa's llvmpipe
+        run: tests/install/vgem.sh
+
       - name: Install, check and uninstall Android-Daemon in a Plasma session
         run: tests/install/run.sh
