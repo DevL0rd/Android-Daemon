@@ -73,7 +73,7 @@ PlasmoidItem {
         if (!_pinTarget || !root.dataWanted) return
         var r = screenRect()
         var a = "claim desktop 1 " + r.x + " " + r.y + " " + r.w + " " + r.h + root.serialArg
-        a += " --above " + (Plasmoid.configuration.keepBelow ? 0 : 1)
+        a += " --above " + (root.inPanel || !Plasmoid.configuration.keepBelow ? 1 : 0)
         a += " --borderless " + (Plasmoid.configuration.borderless ? 1 : 0)
         var extra = (Plasmoid.configuration.extraArgs || "").replace(/'/g, "").trim()
         if (extra !== "") a += " --extra '" + extra + "'"
@@ -83,6 +83,8 @@ PlasmoidItem {
         if (root.dataWanted) claimMirror()
         else ctl("release desktop")
     }
+    onExpandedChanged: if (root.inPanel && root.expanded) ctl("raise")
+    function bringToFront() { ctl("raise") }
     function popOut() { ctl("window" + root.serialArg) }
     function toggleLock() {
         root.pendingLock = !root.displayLocked
@@ -122,6 +124,16 @@ PlasmoidItem {
                 statusColor: root.statusColor
                 statusText: root.mirrorView.text
 
+                PlasmaComponents.ToolButton {
+                    icon.name: "go-top"
+                    display: QQC2.AbstractButton.IconOnly
+                    enabled: feed.ready && feed.reachable && feed.status !== "external"
+                    onClicked: root.bringToFront()
+                    text: i18n("Bring to front")
+                    QQC2.ToolTip.text: text
+                    QQC2.ToolTip.visible: hovered
+                    QQC2.ToolTip.delay: 600
+                }
                 PlasmaComponents.ToolButton {
                     icon.name: "window-new"
                     display: QQC2.AbstractButton.IconOnly
