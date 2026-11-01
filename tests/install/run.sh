@@ -65,6 +65,13 @@ sleep 15
 WORKDIR=/home/tester as_tester /opt/install-test/verify.sh
 as_root mv "$MOVED" "$CHECKOUT"
 
+step "Checking that a system update removes itself when the app is gone"
+SOURCE=/home/tester/.local/share/linux-android-daemon/source
+as_root mv "$SOURCE" "$SOURCE.moved"
+as_root /usr/lib/linux-android-daemon/system-update
+as_root bash -c '! test -e /usr/share/libalpm/hooks/linux-android-daemon-update.hook && ! test -e /usr/lib/linux-android-daemon && ! test -e /var/lib/linux-android-daemon'
+as_root mv "$SOURCE.moved" "$SOURCE"
+
 step "Uninstalling Android-Daemon"
 as_tester ./uninstall.sh
 sleep 10

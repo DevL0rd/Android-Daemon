@@ -1,7 +1,18 @@
 [Trigger]
+Operation = Install
 Operation = Upgrade
 Type = Package
-Target = *
+Target = android-tools
+Target = scrcpy
+Target = ffmpeg
+Target = python
+Target = python-gobject
+Target = v4l-utils
+Target = v4l2loopback-dkms
+Target = ydotool
+Target = qt6-tools
+Target = kconfig
+Target = kpackage
 
 [Action]
 Description = Updating Linux Android Daemon...

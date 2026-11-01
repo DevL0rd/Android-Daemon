@@ -35,6 +35,18 @@ update_as_root() {
     fi
 }
 
+update_dependency_fingerprint() {
+    local hook="$1" packages
+    [[ -z $ATOMIC ]] && command -v pacman >/dev/null || return 0
+    mapfile -t packages < <(sed -n 's/^Target = //p' "$hook")
+    ((${#packages[@]})) || return 0
+    pacman -Q "${packages[@]}" 2>/dev/null | sort
+}
+
+record_update_dependencies() {
+    update_dependency_fingerprint "$UPDATE_HOOK" | update_as_root install -Dm644 /dev/stdin "$UPDATE_STATE_DIR/dependencies"
+}
+
 install_update_hook() {
     local checkout="$1"
     update_as_root install -Dm755 "$checkout/packaging/system-update" "$UPDATER_DIR/system-update"
@@ -106,6 +118,7 @@ register_system_updates() {
     install_update_hook "$checkout"
     printf '%s\n%s\n' "$UPDATE_SOURCE_DIR" "$(id -un)" | update_as_root install -Dm644 /dev/stdin "$UPDATE_STATE_DIR/source"
     update_as_root rm -f "$UPDATE_STATE_DIR/update-failed"
+    record_update_dependencies
     install_update_unit "$checkout" "$UPDATE_SOURCE_DIR"
     systemctl --user enable "$UPDATE_UNIT" >/dev/null 2>&1
 }
@@ -117,10 +130,14 @@ install_update_unit() {
     systemctl --user daemon-reload
 }
 
-unregister_system_updates() {
+remove_update_system_files() {
     if [[ -e $UPDATE_HOOK || -e $UPDATE_LEGACY_HOOK || -e $UPDATE_STATE_DIR || -e $UPDATER_DIR ]]; then
         update_as_root rm -rf "$UPDATE_HOOK" "$UPDATE_LEGACY_HOOK" "$UPDATE_STATE_DIR" "$UPDATER_DIR"
     fi
+}
+
+unregister_system_updates() {
+    remove_update_system_files
     local unit="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/$UPDATE_UNIT"
     if [[ -e $unit ]]; then
         systemctl --user disable "$UPDATE_UNIT" >/dev/null 2>&1 || true

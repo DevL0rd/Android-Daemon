@@ -26,6 +26,10 @@ for widget in org.devl0rd.phonecam org.devl0rd.phonescreen; do
 done
 check "Plasma may read the status files" "systemctl --user show-environment | grep -qx QML_XHR_ALLOW_FILE_READ=1"
 check "the system update hook is registered" "test -f /usr/share/libalpm/hooks/linux-android-daemon-update.hook"
+check "the update hook only targets the packages it depends on" "grep -q '^Target = android-tools\$' /usr/share/libalpm/hooks/linux-android-daemon-update.hook && ! grep -q '^Target = \*' /usr/share/libalpm/hooks/linux-android-daemon-update.hook"
+check "the update hook fires on installs and upgrades" "grep -q '^Operation = Install\$' /usr/share/libalpm/hooks/linux-android-daemon-update.hook && grep -q '^Operation = Upgrade\$' /usr/share/libalpm/hooks/linux-android-daemon-update.hook"
+check "the depended-on package versions are recorded" "grep -q '^android-tools ' /var/lib/linux-android-daemon/dependencies"
+check "a system update with nothing changed does nothing" "out=\$(sudo /usr/lib/linux-android-daemon/system-update 2>&1) && ! grep -q 'updated to\\|rebuilding\\|failed' <<<\"\$out\""
 check "the update service is enabled" "systemctl --user is-enabled linux-android-daemon-update.service"
 check "Plasma runs" "systemctl --user is-active plasma-plasmashell.service"
 errors=$(journalctl --user -u linux-android-daemon -u linux-phonecam --no-pager -o cat | grep -A3 Traceback)

@@ -5,6 +5,7 @@ ID="linux-android-daemon"
 TITLE="Linux Android Daemon"
 STATE_FILE="${UPDATE_SOURCE_STATE:-/var/lib/$ID/source}"
 SUPPORT="${LINUX_ANDROID_DAEMON_SUPPORT:-/usr/lib/$ID}"
+source "$SUPPORT/lib.sh"
 
 log() {
     printf '%s: %s\n' "$ID" "$*"
@@ -35,29 +36,47 @@ git_owner() {
     as_owner git -C "$checkout" "$@"
 }
 
-if [[ ! -d $checkout ]] || ! git_owner rev-parse --git-dir >/dev/null 2>&1; then
-    log "checkout $checkout is gone or not a git repository, skipping"
+if [[ ! -d $checkout ]]; then
+    if [[ -d $home ]]; then
+        log "$checkout is gone, removing $TITLE from system updates"
+        remove_update_system_files
+    else
+        log "checkout $checkout is gone but $home is missing, skipping"
+    fi
     exit 0
 fi
-git_owner rev-parse --abbrev-ref '@{upstream}' >/dev/null 2>&1 || exit 0
-if ! git_owner fetch --quiet; then
-    log "could not fetch updates for $checkout, skipping"
+git_owner rev-parse HEAD >/dev/null 2>&1 || {
+    log "$checkout is not a usable git repository, skipping"
     exit 0
-fi
-[[ $(git_owner rev-list --count 'HEAD..@{upstream}') -gt 0 ]] || exit 0
-if [[ -n $(git_owner status --porcelain --untracked-files=no) ]]; then
-    log "$checkout has local changes, skipping the update"
-    exit 0
-fi
-if [[ $(git_owner rev-list --count '@{upstream}..HEAD') -gt 0 ]]; then
-    log "$checkout has local commits that aren't upstream, skipping the update"
-    exit 0
-fi
-git_owner merge --ff-only --quiet '@{upstream}' || exit 0
-git_owner submodule update --init --recursive --quiet
-log "updated to $(git_owner rev-parse --short HEAD)"
+}
 
-inputs=$(git_owner rev-parse HEAD)
+pulled=false
+if ! git_owner rev-parse --abbrev-ref '@{upstream}' >/dev/null 2>&1; then
+    log "$checkout has no upstream branch, not pulling"
+elif ! git_owner fetch --quiet; then
+    log "could not fetch updates for $checkout, not pulling"
+elif [[ $(git_owner rev-list --count 'HEAD..@{upstream}') -gt 0 ]]; then
+    if [[ -n $(git_owner status --porcelain --untracked-files=no) ]]; then
+        log "$checkout has local changes, not pulling"
+    elif [[ $(git_owner rev-list --count '@{upstream}..HEAD') -gt 0 ]]; then
+        log "$checkout has local commits that aren't upstream, not pulling"
+    elif git_owner merge --ff-only --quiet '@{upstream}'; then
+        git_owner submodule update --init --recursive --quiet
+        log "updated to $(git_owner rev-parse --short HEAD)"
+        pulled=true
+    else
+        log "could not fast-forward $checkout, not pulling"
+    fi
+fi
+
+dependencies_file="$state_dir/dependencies"
+fingerprint=$(update_dependency_fingerprint "$UPDATE_HOOK")
+if ! $pulled && [[ $fingerprint == "$(cat "$dependencies_file" 2>/dev/null)" ]]; then
+    exit 0
+fi
+$pulled || log "the packages $TITLE depends on changed, rebuilding"
+
+inputs=$(printf '%s\n%s\n' "$(git_owner rev-parse HEAD)" "$fingerprint" | sha256sum | cut -d' ' -f1)
 if [[ $(cat "$failed_file" 2>/dev/null) == "$inputs" ]]; then
     log "last update failed for these inputs, skipping; run ./install.sh to retry"
     exit 0
@@ -73,7 +92,8 @@ else
 fi
 if [[ $status -ne 0 ]]; then
     printf '%s\n' "$inputs" >"$failed_file"
-    log "the update failed, it will not be retried until the source changes"
+    log "the update failed, it will not be retried until the source or its packages change"
 else
     rm -f "$failed_file"
+    update_dependency_fingerprint "$UPDATE_HOOK" >"$dependencies_file"
 fi
